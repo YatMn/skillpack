@@ -1,0 +1,4 @@
+# Scenario: deploy, operate, secure, observe, and configure hosted apps.
+vercel/vercel-plugin | bootstrap deployments-cicd env-vars marketplace routing-middleware runtime-cache vercel-agent vercel-cli vercel-functions vercel-sandbox vercel-storage verification workflow
+!local/deploy | vercel-deploy
+!openai-curated/vercel-legacy | cron-jobs email investigation-mode observability vercel-api vercel-firewall vercel-flags vercel-queues vercel-services

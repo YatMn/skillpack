@@ -1,3 +1,0 @@
-# GitHub PR, issue, review, CI, and publishing workflows.
-openai/skills | gh-address-comments gh-fix-ci yeet
-!openai-curated/github | github

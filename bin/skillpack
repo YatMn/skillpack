@@ -225,7 +225,7 @@ parse_agent_args() {
 install_profile() {
   local profile="$1"
   local agent="$2"
-  local expanded line source skills_part
+  local expanded line source skills_part install_file grouped_file
   local -a skills
 
   if ! expanded="$(expand_profile "$profile")"; then
@@ -234,6 +234,8 @@ install_profile() {
   [ -n "$expanded" ] || die "profile has no install entries: ${profile}"
 
   mkdir -p .agents/skills
+  install_file="$(mktemp)"
+  grouped_file="$(mktemp)"
 
   while IFS= read -r line || [ -n "$line" ]; do
     source="$(trim "${line%%|*}")"
@@ -244,8 +246,30 @@ install_profile() {
     case "$source" in
       !*) continue ;;
     esac
+    for skill in "${skills[@]}"; do
+      printf '%s\t%s\n' "$source" "$skill" >> "$install_file"
+    done
+  done <<< "$expanded"
+
+  awk -F '\t' '
+    !seen_source[$1]++ { order[++count] = $1 }
+    !seen_skill[$1 SUBSEP $2]++ { skills[$1] = skills[$1] " " $2 }
+    END {
+      for (i = 1; i <= count; i++) {
+        source = order[i]
+        print source " |" skills[source]
+      }
+    }
+  ' "$install_file" > "$grouped_file"
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    source="$(trim "${line%%|*}")"
+    skills_part="$(trim "${line#*|}")"
+    read -r -a skills <<< "$skills_part"
     npx skills add "$source" --skill "${skills[@]}" --agent "$agent" -y </dev/null
-  done < <(printf '%s\n' "$expanded" | awk '!seen[$0]++')
+  done < "$grouped_file"
+
+  rm -f "$install_file" "$grouped_file"
 }
 
 doctor() {

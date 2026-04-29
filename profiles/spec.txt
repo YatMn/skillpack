@@ -1,2 +1,0 @@
-# Spec Kit workflow skills.
-!local/speckit | speckit-analyze speckit-checklist speckit-clarify speckit-constitution speckit-git-commit speckit-git-feature speckit-git-initialize speckit-git-remote speckit-git-validate speckit-implement speckit-plan speckit-specify speckit-tasks speckit-taskstoissues

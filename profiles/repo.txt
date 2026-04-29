@@ -1,0 +1,6 @@
+# Scenario: manage repositories, PRs, reviews, CI, releases, and repo guidance.
+obra/superpowers | finishing-a-development-branch receiving-code-review requesting-code-review verification-before-completion using-git-worktrees
+openai/skills | gh-address-comments gh-fix-ci yeet
+anthropics/skills | mcp-builder
+!openai-curated/github | github
+!local/repo | c4-architecture yatmn-agents-md

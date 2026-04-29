@@ -1,4 +1,0 @@
-# Vercel platform, Next.js, deployment, routing, storage, and workflow skills.
-vercel/vercel-plugin | ai-gateway ai-sdk auth bootstrap chat-sdk deployments-cicd env-vars marketplace next-forge nextjs react-best-practices routing-middleware runtime-cache shadcn turbopack turborepo vercel-agent vercel-cli vercel-functions vercel-sandbox vercel-storage verification workflow
-!local/deploy | vercel-deploy
-!openai-curated/vercel-legacy | agent-browser agent-browser-verify ai-elements ai-generation-persistence cms cron-jobs email geist geistdocs investigation-mode json-render micro ncc observability payments satori sign-in-with-vercel swr v0-dev vercel-api vercel-firewall vercel-flags vercel-queues vercel-services

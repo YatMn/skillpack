@@ -1,8 +1,9 @@
 @dev
-# Frontend, full-stack web, platform, and browser-verification skills.
+# Scenario: build and verify web apps, product UIs, and full-stack frontends.
 anthropics/skills | frontend-design webapp-testing
 docs.stripe.com | stripe-best-practices
 supabase/agent-skills | supabase-best-practices
-vercel/vercel-plugin | ai-gateway ai-sdk auth bootstrap chat-sdk deployments-cicd env-vars marketplace next-forge nextjs react-best-practices routing-middleware runtime-cache shadcn turbopack turborepo vercel-agent vercel-cli vercel-functions vercel-sandbox vercel-storage verification workflow
+vercel/vercel-plugin | ai-sdk auth chat-sdk next-forge nextjs react-best-practices shadcn turbopack turborepo
 !openai-curated/build-web-apps | frontend-app-builder shadcn-best-practices
-!openai-curated/vercel-legacy | agent-browser agent-browser-verify ai-elements ai-generation-persistence cms cron-jobs email geist geistdocs investigation-mode json-render micro ncc observability payments satori sign-in-with-vercel swr v0-dev vercel-api vercel-firewall vercel-flags vercel-queues vercel-services
+!openai-bundled/browser-use | browser
+!openai-curated/vercel-legacy | agent-browser agent-browser-verify ai-elements cms geist geistdocs json-render micro ncc payments satori sign-in-with-vercel swr v0-dev

@@ -41,7 +41,23 @@ skillpack init dev --agent '*'
 
 ## Profiles
 
-Profiles live in `profiles/*.txt`.
+Profiles live in `profiles/*.txt` and are organized by usage scenario:
+
+```text
+dev          build, debug, refactor, and finish software projects
+web          build and verify web apps and product UIs
+deploy       deploy, operate, secure, and configure hosted apps
+ai           build AI, LLM, chat, and generated-media apps
+design       create visual design, UI direction, static assets, and motion
+content      produce articles, social posts, video scripts, and creator assets
+writing      write, edit, proofread, and shape communication
+research     gather sources, extract knowledge, and verify references
+office       handle documents, spreadsheets, presentations, and calendars
+planning     turn ideas, product context, and specs into implementation work
+repo         manage repositories, PRs, reviews, CI, releases, and repo guidance
+personal     maintain personal agent setup, prompts, skills, and local workflows
+all          include every scenario profile
+```
 
 ```text
 # source | skill names

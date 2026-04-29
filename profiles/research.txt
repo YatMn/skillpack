@@ -1,4 +1,4 @@
-# Research, source gathering, knowledge extraction, and reference lookup.
+# Scenario: research, gather sources, extract knowledge, and verify references.
 dokobot/skills | dokobot
 alchaincyf/huashu-skills | huashu-research huashu-info-search huashu-material-search
 anthropics/skills | pdf

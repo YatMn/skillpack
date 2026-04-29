@@ -1,4 +1,4 @@
-# Writing, editing, communications, prompts, and content production.
+# Scenario: write, edit, proofread, and shape written communication.
 alchaincyf/huashu-skills | huashu-article-edit huashu-proofreading huashu-topic-gen huashu-material-search huashu-article-to-x huashu-script-polish huashu-prompt-save
 anthropics/skills | doc-coauthoring internal-comms
 !local/personal | next-prompt
