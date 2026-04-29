@@ -1,0 +1,2 @@
+alchaincyf/huashu-skills | huashu-article-edit huashu-proofreading huashu-topic-gen huashu-material-search huashu-article-to-x
+anthropics/skills | doc-coauthoring internal-comms

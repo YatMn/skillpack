@@ -1,0 +1,5 @@
+# source | skill names
+obra/superpowers | writing-plans test-driven-development systematic-debugging verification-before-completion finishing-a-development-branch
+anthropics/skills | webapp-testing
+intellectronica/agent-skills | context7
+openai/skills | openai-docs skill-installer

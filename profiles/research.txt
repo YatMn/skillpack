@@ -1,0 +1,3 @@
+dokobot/skills | dokobot
+alchaincyf/huashu-skills | huashu-research huashu-info-search
+anthropics/skills | pdf

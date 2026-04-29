@@ -1,0 +1,253 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DEFAULT_AGENT="codex"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  skillpack list
+  skillpack show <profile>
+  skillpack init <profile> [--agent <agent>]
+  skillpack add <profile> [--agent <agent>]
+  skillpack update
+  skillpack restore
+  skillpack doctor
+EOF
+}
+
+die() {
+  echo "skillpack: $*" >&2
+  exit 1
+}
+
+resolve_script_path() {
+  local source="${BASH_SOURCE[0]}"
+  local dir
+
+  while [ -L "$source" ]; do
+    dir="$(cd -P "$(dirname "$source")" && pwd)"
+    source="$(readlink "$source")"
+    case "$source" in
+      /*) ;;
+      *) source="${dir}/${source}" ;;
+    esac
+  done
+
+  cd -P "$(dirname "$source")" && pwd
+}
+
+trim() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+SCRIPT_DIR="$(resolve_script_path)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PROFILE_DIR="${ROOT_DIR}/profiles"
+
+profile_path() {
+  local profile="$1"
+
+  case "$profile" in
+    ""|*/*|*..*) die "invalid profile name: ${profile}" ;;
+  esac
+
+  printf '%s/%s.txt' "$PROFILE_DIR" "$profile"
+}
+
+require_profile() {
+  local profile="$1"
+  local path
+  if ! path="$(profile_path "$profile")"; then
+    return 1
+  fi
+
+  [ -f "$path" ] || die "profile not found: ${profile}"
+  printf '%s' "$path"
+}
+
+list_profiles() {
+  local file name
+
+  [ -d "$PROFILE_DIR" ] || die "profile directory not found: ${PROFILE_DIR}"
+
+  for file in "${PROFILE_DIR}"/*.txt; do
+    [ -e "$file" ] || continue
+    name="$(basename "$file" .txt)"
+    printf '%s\n' "$name"
+  done
+}
+
+expand_profile() {
+  local profile="$1"
+  local stack="${2:-}"
+  local path line stripped source skills_part
+
+  case ":${stack}:" in
+    *":${profile}:"*) die "profile include cycle: ${stack}:${profile}" ;;
+  esac
+
+  if ! path="$(require_profile "$profile")"; then
+    return 1
+  fi
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    stripped="$(trim "${line%%#*}")"
+    [ -n "$stripped" ] || continue
+
+    case "$stripped" in
+      @*)
+        if ! expand_profile "${stripped#@}" "${stack}:${profile}"; then
+          return 1
+        fi
+        ;;
+      *"|"*)
+        source="$(trim "${stripped%%|*}")"
+        skills_part="$(trim "${stripped#*|}")"
+        [ -n "$source" ] || die "missing source in ${path}: ${line}"
+        [ -n "$skills_part" ] || die "missing skills in ${path}: ${line}"
+        printf '%s | %s\n' "$source" "$skills_part"
+        ;;
+      *)
+        die "invalid profile line in ${path}: ${line}"
+        ;;
+    esac
+  done < "$path"
+}
+
+parse_agent_args() {
+  AGENT="$DEFAULT_AGENT"
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --agent)
+        shift
+        [ "$#" -gt 0 ] || die "--agent requires a value"
+        AGENT="$1"
+        ;;
+      --agent=*)
+        AGENT="${1#--agent=}"
+        [ -n "$AGENT" ] || die "--agent requires a value"
+        ;;
+      *)
+        die "unknown argument: $1"
+        ;;
+    esac
+    shift
+  done
+}
+
+install_profile() {
+  local profile="$1"
+  local agent="$2"
+  local expanded line source skills_part
+  local -a skills
+
+  if ! expanded="$(expand_profile "$profile")"; then
+    return 1
+  fi
+  [ -n "$expanded" ] || die "profile has no install entries: ${profile}"
+
+  mkdir -p .agents/skills
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    source="$(trim "${line%%|*}")"
+    skills_part="$(trim "${line#*|}")"
+    read -r -a skills <<< "$skills_part"
+
+    [ "${#skills[@]}" -gt 0 ] || die "profile ${profile} has an empty skill list for ${source}"
+    npx skills add "$source" --skill "${skills[@]}" --agent "$agent" -y </dev/null
+  done <<< "$expanded"
+}
+
+doctor() {
+  local failed=0
+
+  if command -v npx >/dev/null 2>&1; then
+    echo "ok: npx found"
+  else
+    echo "fail: npx not found"
+    failed=1
+  fi
+
+  if npx skills --help >/dev/null 2>&1; then
+    echo "ok: npx skills --help runs"
+  else
+    echo "fail: npx skills --help failed"
+    failed=1
+  fi
+
+  if [ -w . ]; then
+    echo "ok: current directory is writable"
+  else
+    echo "fail: current directory is not writable"
+    failed=1
+  fi
+
+  if [ -d .agents/skills ]; then
+    echo "ok: .agents/skills exists"
+  else
+    echo "warn: .agents/skills missing"
+  fi
+
+  if [ -f skills-lock.json ]; then
+    echo "ok: skills-lock.json exists"
+  else
+    echo "warn: skills-lock.json missing"
+  fi
+
+  return "$failed"
+}
+
+main() {
+  local command="${1:-}"
+  local profile
+
+  case "$command" in
+    list)
+      shift
+      [ "$#" -eq 0 ] || die "list does not accept arguments"
+      list_profiles
+      ;;
+    show)
+      shift
+      [ "$#" -eq 1 ] || die "show requires exactly one profile"
+      expand_profile "$1"
+      ;;
+    init|add)
+      shift
+      [ "$#" -gt 0 ] || die "${command} requires a profile"
+      profile="$1"
+      shift
+      parse_agent_args "$@"
+      install_profile "$profile" "$AGENT"
+      ;;
+    update)
+      shift
+      [ "$#" -eq 0 ] || die "update does not accept arguments"
+      npx skills update -p -y
+      ;;
+    restore)
+      shift
+      [ "$#" -eq 0 ] || die "restore does not accept arguments"
+      npx skills experimental_install
+      ;;
+    doctor)
+      shift
+      [ "$#" -eq 0 ] || die "doctor does not accept arguments"
+      doctor
+      ;;
+    -h|--help|help|"")
+      usage
+      ;;
+    *)
+      usage >&2
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

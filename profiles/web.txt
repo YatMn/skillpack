@@ -1,0 +1,6 @@
+@dev
+anthropics/skills | frontend-design
+shadcn/ui | shadcn
+docs.stripe.com | stripe-best-practices
+supabase/agent-skills | supabase-postgres-best-practices
+vercel/vercel | vercel-cli
