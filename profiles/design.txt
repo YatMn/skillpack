@@ -1,2 +1,6 @@
-anthropics/skills | frontend-design canvas-design theme-factory web-artifacts-builder pptx
-alchaincyf/huashu-design | huashu-design
+# Visual design, artifacts, generated images, slides, and motion.
+anthropics/skills | algorithmic-art brand-guidelines canvas-design frontend-design slack-gif-creator theme-factory web-artifacts-builder pptx
+alchaincyf/huashu-skills | huashu-design huashu-image-upload huashu-wechat-image huashu-xhs-image
+openai/skills | imagegen
+!openai-curated/remotion | remotion
+!openai-curated/vercel-legacy | satori

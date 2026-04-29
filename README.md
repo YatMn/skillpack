@@ -7,13 +7,15 @@ current project's `.agents/skills/`.
 ## Install
 
 ```bash
-/Users/yatmn/Projects/skillpack/install.sh
+git clone https://github.com/YatMn/skillpack.git
+cd skillpack
+./install.sh
 ```
 
 This creates:
 
 ```text
-/Users/yatmn/.local/bin/skillpack -> /Users/yatmn/Projects/skillpack/bin/skillpack
+~/.local/bin/skillpack -> <repo>/bin/skillpack
 ```
 
 ## Usage
@@ -26,6 +28,7 @@ skillpack add writing
 skillpack update
 skillpack restore
 skillpack doctor
+skillpack coverage
 ```
 
 The default agent is `codex`.
@@ -53,6 +56,11 @@ Profiles can include another profile with `@name`:
 anthropics/skills | frontend-design
 ```
 
+Lines whose source starts with `!` are catalog-only entries. They are counted by
+`skillpack coverage`, but skipped by `skillpack init` and `skillpack add`.
+Use them for local, bundled, or plugin-cache-only skills that are visible on the
+current machine but should not be installed from a public source.
+
 ## Commands
 
 - `list`: list available profiles.
@@ -62,6 +70,7 @@ anthropics/skills | frontend-design
 - `update`: run `npx skills update -p -y`.
 - `restore`: run `npx skills experimental_install`.
 - `doctor`: check local prerequisites and current project state.
+- `coverage`: compare local visible skills with the union of all profile skills.
 
 ## Boundaries
 

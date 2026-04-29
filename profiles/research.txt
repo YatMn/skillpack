@@ -1,3 +1,7 @@
+# Research, source gathering, knowledge extraction, and reference lookup.
 dokobot/skills | dokobot
-alchaincyf/huashu-skills | huashu-research huashu-info-search
+alchaincyf/huashu-skills | huashu-research huashu-info-search huashu-material-search
 anthropics/skills | pdf
+intellectronica/agent-skills | context7
+openai/skills | notion-research-documentation
+!openai-bundled/browser-use | browser

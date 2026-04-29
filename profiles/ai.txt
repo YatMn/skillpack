@@ -1,0 +1,5 @@
+# AI SDKs, model/provider guidance, generated media, and chat app patterns.
+anthropics/skills | claude-api
+openai/skills | imagegen openai-docs
+vercel/vercel-plugin | ai-gateway ai-sdk chat-sdk
+!openai-curated/vercel-legacy | ai-elements ai-generation-persistence json-render

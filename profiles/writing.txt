@@ -1,2 +1,4 @@
-alchaincyf/huashu-skills | huashu-article-edit huashu-proofreading huashu-topic-gen huashu-material-search huashu-article-to-x
+# Writing, editing, communications, prompts, and content production.
+alchaincyf/huashu-skills | huashu-article-edit huashu-proofreading huashu-topic-gen huashu-material-search huashu-article-to-x huashu-script-polish huashu-prompt-save
 anthropics/skills | doc-coauthoring internal-comms
+!local/personal | next-prompt

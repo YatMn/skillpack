@@ -13,6 +13,7 @@ Usage:
   skillpack update
   skillpack restore
   skillpack doctor
+  skillpack coverage
 EOF
 }
 
@@ -79,6 +80,87 @@ list_profiles() {
     name="$(basename "$file" .txt)"
     printf '%s\n' "$name"
   done
+}
+
+profile_skill_names() {
+  local file line stripped skills_part skill
+
+  [ -d "$PROFILE_DIR" ] || die "profile directory not found: ${PROFILE_DIR}"
+
+  for file in "${PROFILE_DIR}"/*.txt; do
+    [ -e "$file" ] || continue
+
+    while IFS= read -r line || [ -n "$line" ]; do
+      stripped="$(trim "${line%%#*}")"
+      [ -n "$stripped" ] || continue
+
+      case "$stripped" in
+        @*) continue ;;
+        *"|"*)
+          skills_part="$(trim "${stripped#*|}")"
+          for skill in $skills_part; do
+            [ -n "$skill" ] && printf '%s\n' "$skill"
+          done
+          ;;
+      esac
+    done < "$file"
+  done | sort -u
+}
+
+local_skill_names() {
+  find \
+    "${HOME}/.codex/skills" \
+    "${HOME}/.agents/skills" \
+    "${HOME}/.codex/plugins/cache" \
+    -path '*/SKILL.md' \
+    -type f 2>/dev/null |
+    sed 's#/SKILL.md$##' |
+    awk -F/ '{print $NF}' |
+    sort -u
+}
+
+coverage() {
+  local local_file profile_file missing_file extra_file
+  local local_count profile_count covered_count missing_count extra_count
+
+  local_file="$(mktemp)"
+  profile_file="$(mktemp)"
+  missing_file="$(mktemp)"
+  extra_file="$(mktemp)"
+
+  local_skill_names > "$local_file"
+  profile_skill_names > "$profile_file"
+
+  comm -23 "$local_file" "$profile_file" > "$missing_file"
+  comm -13 "$local_file" "$profile_file" > "$extra_file"
+
+  local_count="$(wc -l < "$local_file" | tr -d ' ')"
+  profile_count="$(wc -l < "$profile_file" | tr -d ' ')"
+  covered_count="$(comm -12 "$local_file" "$profile_file" | wc -l | tr -d ' ')"
+  missing_count="$(wc -l < "$missing_file" | tr -d ' ')"
+  extra_count="$(wc -l < "$extra_file" | tr -d ' ')"
+
+  echo "local skills: ${local_count}"
+  echo "profile skills: ${profile_count}"
+  echo "covered local skills: ${covered_count}"
+  echo "missing local skills: ${missing_count}"
+  echo "profile-only skills: ${extra_count}"
+
+  if [ "$missing_count" -gt 0 ]; then
+    echo
+    echo "Missing local skills:"
+    cat "$missing_file"
+  fi
+
+  if [ "$extra_count" -gt 0 ]; then
+    echo
+    echo "Profile-only skills:"
+    cat "$extra_file"
+  fi
+
+  rm -f "$local_file" "$profile_file" "$missing_file" "$extra_file"
+
+  [ "$missing_count" -eq 0 ]
 }
 
 expand_profile() {
@@ -159,8 +241,11 @@ install_profile() {
     read -r -a skills <<< "$skills_part"
 
     [ "${#skills[@]}" -gt 0 ] || die "profile ${profile} has an empty skill list for ${source}"
+    case "$source" in
+      !*) continue ;;
+    esac
     npx skills add "$source" --skill "${skills[@]}" --agent "$agent" -y </dev/null
-  done <<< "$expanded"
+  done < <(printf '%s\n' "$expanded" | awk '!seen[$0]++')
 }
 
 doctor() {
@@ -239,6 +324,11 @@ main() {
       shift
       [ "$#" -eq 0 ] || die "doctor does not accept arguments"
       doctor
+      ;;
+    coverage)
+      shift
+      [ "$#" -eq 0 ] || die "coverage does not accept arguments"
+      coverage
       ;;
     -h|--help|help|"")
       usage

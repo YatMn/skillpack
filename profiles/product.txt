@@ -1,0 +1,3 @@
+# Product strategy, PRDs, Notion planning, and spec handoff.
+openai/skills | notion-knowledge-capture notion-meeting-intelligence notion-research-documentation notion-spec-to-implementation
+!local/product | plan-with-team prd-management product-strategy
