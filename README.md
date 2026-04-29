@@ -45,17 +45,11 @@ Profiles live in `profiles/*.txt` and are organized by usage scenario:
 
 ```text
 dev          build, debug, refactor, and finish software projects
-web          build and verify web apps and product UIs
-deploy       deploy, operate, secure, and configure hosted apps
-ai           build AI, LLM, chat, and generated-media apps
+web          build, verify, deploy, and operate web apps and product UIs
 design       create visual design, UI direction, static assets, and motion
-content      produce articles, social posts, video scripts, and creator assets
-writing      write, edit, proofread, and shape communication
+writing      write, edit, proofread, and produce creator content
 research     gather sources, extract knowledge, and verify references
 office       handle documents, spreadsheets, presentations, and calendars
-planning     turn ideas, product context, and specs into implementation work
-repo         manage repositories, PRs, reviews, CI, releases, and repo guidance
-personal     maintain personal agent setup, prompts, skills, and local workflows
 all          include every scenario profile
 ```
 
@@ -72,11 +66,6 @@ Profiles can include another profile with `@name`:
 anthropics/skills | frontend-design
 ```
 
-Lines whose source starts with `!` are catalog-only entries. They are counted by
-`skillpack coverage`, but skipped by `skillpack init` and `skillpack add`.
-Use them for local, bundled, or plugin-cache-only skills that are visible on the
-current machine but should not be installed from a public source.
-
 ## Commands
 
 - `list`: list available profiles.
@@ -86,7 +75,7 @@ current machine but should not be installed from a public source.
 - `update`: run `npx skills update -p -y`.
 - `restore`: run `npx skills experimental_install`.
 - `doctor`: check local prerequisites and current project state.
-- `coverage`: compare local visible skills with the union of all profile skills.
+- `coverage`: check profile source/skill pairs and report scenario overlaps.
 
 ## Boundaries
 

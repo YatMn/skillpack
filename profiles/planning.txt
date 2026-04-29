@@ -1,5 +1,0 @@
-# Scenario: turn ideas, product context, and specs into implementation work.
-obra/superpowers | brainstorming writing-plans executing-plans verification-before-completion
-openai/skills | notion-knowledge-capture notion-meeting-intelligence notion-research-documentation notion-spec-to-implementation
-!local/product | plan-with-team prd-management product-strategy
-!local/speckit | speckit-analyze speckit-checklist speckit-clarify speckit-constitution speckit-git-commit speckit-git-feature speckit-git-initialize speckit-git-remote speckit-git-validate speckit-implement speckit-plan speckit-specify speckit-tasks speckit-taskstoissues

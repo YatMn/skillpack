@@ -1,5 +1,0 @@
-# Scenario: build AI, LLM, chat, model-routing, and generated-media apps.
-anthropics/skills | claude-api mcp-builder
-openai/skills | imagegen openai-docs
-vercel/vercel-plugin | ai-gateway ai-sdk chat-sdk
-!openai-curated/vercel-legacy | ai-elements ai-generation-persistence json-render v0-dev

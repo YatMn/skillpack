@@ -1,9 +1,5 @@
 @dev
-# Scenario: build and verify web apps, product UIs, and full-stack frontends.
+# Scenario: build, verify, deploy, and operate web apps and product UIs.
 anthropics/skills | frontend-design webapp-testing
-docs.stripe.com | stripe-best-practices
-supabase/agent-skills | supabase-best-practices
-vercel/vercel-plugin | ai-sdk auth chat-sdk next-forge nextjs react-best-practices shadcn turbopack turborepo
-!openai-curated/build-web-apps | frontend-app-builder shadcn-best-practices
-!openai-bundled/browser-use | browser
-!openai-curated/vercel-legacy | agent-browser agent-browser-verify ai-elements cms geist geistdocs json-render micro ncc payments satori sign-in-with-vercel swr v0-dev
+supabase/agent-skills | supabase-postgres-best-practices
+vercel/vercel-plugin | ai-gateway ai-sdk auth bootstrap chat-sdk deployments-cicd env-vars marketplace next-forge nextjs react-best-practices routing-middleware runtime-cache shadcn turbopack turborepo vercel-agent vercel-cli vercel-functions vercel-sandbox vercel-storage verification workflow

@@ -1,11 +1,6 @@
+@dev
 @web
-@deploy
-@ai
 @design
-@content
 @writing
 @research
 @office
-@planning
-@repo
-@personal

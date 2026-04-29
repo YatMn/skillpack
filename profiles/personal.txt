@@ -1,4 +1,0 @@
-# Scenario: maintain personal agent setup, prompts, skills, and local workflows.
-openai/skills | openai-docs plugin-creator skill-creator skill-installer
-obra/superpowers | using-superpowers writing-skills
-!local/personal | find-skills next-prompt plan-with-team prd-management product-strategy yatmn-agents-md

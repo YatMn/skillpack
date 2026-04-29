@@ -107,60 +107,66 @@ profile_skill_names() {
   done | sort -u
 }
 
-local_skill_names() {
-  find \
-    "${HOME}/.codex/skills" \
-    "${HOME}/.agents/skills" \
-    "${HOME}/.codex/plugins/cache" \
-    -path '*/SKILL.md' \
-    -type f 2>/dev/null |
-    sed 's#/SKILL.md$##' |
-    awk -F/ '{print $NF}' |
-    sort -u
-}
-
 coverage() {
-  local local_file profile_file missing_file extra_file
-  local local_count profile_count covered_count missing_count extra_count
+  local pairs_file catalog_file duplicate_file source_file skill_file
+  local source_count skill_count pair_count catalog_count duplicate_count
 
-  local_file="$(mktemp)"
-  profile_file="$(mktemp)"
-  missing_file="$(mktemp)"
-  extra_file="$(mktemp)"
+  pairs_file="$(mktemp)"
+  catalog_file="$(mktemp)"
+  duplicate_file="$(mktemp)"
+  source_file="$(mktemp)"
+  skill_file="$(mktemp)"
 
-  local_skill_names > "$local_file"
-  profile_skill_names > "$profile_file"
+  awk -F '|' '
+    /^[[:space:]]*#/ { next }
+    /^[[:space:]]*$/ { next }
+    /^[[:space:]]*@/ { next }
+    NF >= 2 {
+      source = $1
+      skills = $2
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", source)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", skills)
+      n = split(skills, names, /[[:space:]]+/)
+      for (i = 1; i <= n; i++) {
+        if (names[i] != "") {
+          print source "\t" names[i]
+        }
+      }
+    }
+  ' "${PROFILE_DIR}"/*.txt > "$pairs_file"
 
-  comm -23 "$local_file" "$profile_file" > "$missing_file"
-  comm -13 "$local_file" "$profile_file" > "$extra_file"
+  awk -F '\t' '$1 ~ /^!/ { print $1 " | " $2 }' "$pairs_file" | sort -u > "$catalog_file"
+  sort "$pairs_file" | uniq -d > "$duplicate_file"
+  awk -F '\t' '$1 !~ /^!/ { print $1 }' "$pairs_file" | sort -u > "$source_file"
+  awk -F '\t' '{ print $2 }' "$pairs_file" | sort -u > "$skill_file"
 
-  local_count="$(wc -l < "$local_file" | tr -d ' ')"
-  profile_count="$(wc -l < "$profile_file" | tr -d ' ')"
-  covered_count="$(comm -12 "$local_file" "$profile_file" | wc -l | tr -d ' ')"
-  missing_count="$(wc -l < "$missing_file" | tr -d ' ')"
-  extra_count="$(wc -l < "$extra_file" | tr -d ' ')"
+  source_count="$(wc -l < "$source_file" | tr -d ' ')"
+  skill_count="$(wc -l < "$skill_file" | tr -d ' ')"
+  pair_count="$(wc -l < "$pairs_file" | tr -d ' ')"
+  catalog_count="$(wc -l < "$catalog_file" | tr -d ' ')"
+  duplicate_count="$(wc -l < "$duplicate_file" | tr -d ' ')"
 
-  echo "local skills: ${local_count}"
-  echo "profile skills: ${profile_count}"
-  echo "covered local skills: ${covered_count}"
-  echo "missing local skills: ${missing_count}"
-  echo "profile-only skills: ${extra_count}"
+  echo "installable sources: ${source_count}"
+  echo "profile skills: ${skill_count}"
+  echo "source/skill pairs: ${pair_count}"
+  echo "catalog-only pairs: ${catalog_count}"
+  echo "overlap source/skill pairs: ${duplicate_count}"
 
-  if [ "$missing_count" -gt 0 ]; then
+  if [ "$catalog_count" -gt 0 ]; then
     echo
-    echo "Missing local skills:"
-    cat "$missing_file"
+    echo "Catalog-only pairs:"
+    cat "$catalog_file"
   fi
 
-  if [ "$extra_count" -gt 0 ]; then
+  if [ "$duplicate_count" -gt 0 ]; then
     echo
-    echo "Profile-only skills:"
-    cat "$extra_file"
+    echo "Overlap source/skill pairs:"
+    cat "$duplicate_file"
   fi
 
-  rm -f "$local_file" "$profile_file" "$missing_file" "$extra_file"
+  rm -f "$pairs_file" "$catalog_file" "$duplicate_file" "$source_file" "$skill_file"
 
-  [ "$missing_count" -eq 0 ]
+  [ "$catalog_count" -eq 0 ]
 }
 
 expand_profile() {

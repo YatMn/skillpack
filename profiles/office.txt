@@ -2,5 +2,3 @@
 anthropics/skills | pdf docx xlsx pptx
 openai/skills | notion-meeting-intelligence
 alchaincyf/huashu-skills | huashu-data-pro huashu-md-to-pdf huashu-slides
-!openai-primary-runtime | documents presentations spreadsheets
-!openai-curated/outlook-calendar | outlook-calendar outlook-calendar-daily-brief outlook-calendar-free-up-time outlook-calendar-group-scheduler outlook-calendar-meeting-prep outlook-calendar-shared-calendars

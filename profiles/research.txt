@@ -4,4 +4,3 @@ alchaincyf/huashu-skills | huashu-research huashu-info-search huashu-material-se
 anthropics/skills | pdf
 intellectronica/agent-skills | context7
 openai/skills | notion-research-documentation
-!openai-bundled/browser-use | browser
