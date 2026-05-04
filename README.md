@@ -13,20 +13,20 @@ Project-level skill profile installer for Codex-style agent projects.
 In a project that needs local agent skills:
 
 ```bash
-npx --yes github:YatMn/skillpack dev
+npx github:YatMn/skillpack dev
 ```
 
 Equivalent shortcuts:
 
 ```bash
-npx --yes github:YatMn/skillpack -dev
-npx --yes github:YatMn/skillpack --dev
+npx github:YatMn/skillpack -dev
+npx github:YatMn/skillpack --dev
 ```
 
 The default agent is `codex`:
 
 ```bash
-npx --yes github:YatMn/skillpack dev --agent claude-code
+npx github:YatMn/skillpack dev --agent claude-code
 ```
 
 ## Profiles
@@ -43,7 +43,7 @@ npx --yes github:YatMn/skillpack dev --agent claude-code
 Show what a profile installs:
 
 ```bash
-npx --yes github:YatMn/skillpack show dev
+npx github:YatMn/skillpack show dev
 ```
 
 ## Profile Skills

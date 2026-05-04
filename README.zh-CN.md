@@ -12,20 +12,20 @@
 在需要 local agent skills 的项目里运行：
 
 ```bash
-npx --yes github:YatMn/skillpack dev
+npx github:YatMn/skillpack dev
 ```
 
 等价快捷写法：
 
 ```bash
-npx --yes github:YatMn/skillpack -dev
-npx --yes github:YatMn/skillpack --dev
+npx github:YatMn/skillpack -dev
+npx github:YatMn/skillpack --dev
 ```
 
 默认 agent 是 `codex`：
 
 ```bash
-npx --yes github:YatMn/skillpack dev --agent claude-code
+npx github:YatMn/skillpack dev --agent claude-code
 ```
 
 ## Profiles
@@ -42,7 +42,7 @@ npx --yes github:YatMn/skillpack dev --agent claude-code
 查看 profile 会安装什么：
 
 ```bash
-npx --yes github:YatMn/skillpack show dev
+npx github:YatMn/skillpack show dev
 ```
 
 ## Profile Skills
