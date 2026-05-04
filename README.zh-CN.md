@@ -12,20 +12,20 @@
 在需要 local agent skills 的项目里运行：
 
 ```bash
-npx @yatmn/skillpack@latest dev
+npx --yes github:YatMn/skillpack dev
 ```
 
 等价快捷写法：
 
 ```bash
-npx @yatmn/skillpack@latest -dev
-npx @yatmn/skillpack@latest --dev
+npx --yes github:YatMn/skillpack -dev
+npx --yes github:YatMn/skillpack --dev
 ```
 
 默认 agent 是 `codex`：
 
 ```bash
-npx @yatmn/skillpack@latest dev --agent claude-code
+npx --yes github:YatMn/skillpack dev --agent claude-code
 ```
 
 ## Profiles
@@ -42,7 +42,7 @@ npx @yatmn/skillpack@latest dev --agent claude-code
 查看 profile 会安装什么：
 
 ```bash
-npx @yatmn/skillpack@latest show dev
+npx --yes github:YatMn/skillpack show dev
 ```
 
 ## Profile Skills
@@ -237,7 +237,7 @@ npm --cache /private/tmp/skillpack-npm-cache pack --dry-run
 bin/skillpack       Bash CLI
 profiles/*.md       Profile definitions
 install.sh          Local symlink installer
-package.json        npm package metadata
+package.json        npx/GitHub 安装所需的 package metadata
 tests/              CLI contract tests
 ```
 

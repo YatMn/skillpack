@@ -13,20 +13,20 @@ Project-level skill profile installer for Codex-style agent projects.
 In a project that needs local agent skills:
 
 ```bash
-npx @yatmn/skillpack@latest dev
+npx --yes github:YatMn/skillpack dev
 ```
 
 Equivalent shortcuts:
 
 ```bash
-npx @yatmn/skillpack@latest -dev
-npx @yatmn/skillpack@latest --dev
+npx --yes github:YatMn/skillpack -dev
+npx --yes github:YatMn/skillpack --dev
 ```
 
 The default agent is `codex`:
 
 ```bash
-npx @yatmn/skillpack@latest dev --agent claude-code
+npx --yes github:YatMn/skillpack dev --agent claude-code
 ```
 
 ## Profiles
@@ -43,7 +43,7 @@ npx @yatmn/skillpack@latest dev --agent claude-code
 Show what a profile installs:
 
 ```bash
-npx @yatmn/skillpack@latest show dev
+npx --yes github:YatMn/skillpack show dev
 ```
 
 ## Profile Skills
@@ -239,7 +239,7 @@ npm --cache /private/tmp/skillpack-npm-cache pack --dry-run
 bin/skillpack       Bash CLI
 profiles/*.md       Profile definitions
 install.sh          Local symlink installer
-package.json        npm package metadata
+package.json        Package metadata for npx/GitHub installs
 tests/              CLI contract tests
 ```
 
