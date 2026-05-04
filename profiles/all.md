@@ -1,5 +1,4 @@
 @dev
-@web
 @design
 @writing
 @research

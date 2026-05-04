@@ -1,5 +1,0 @@
-@dev
-# Scenario: build, verify, deploy, and operate web apps and product UIs.
-anthropics/skills | frontend-design webapp-testing
-supabase/agent-skills | supabase-postgres-best-practices
-vercel/vercel-plugin | ai-gateway ai-sdk auth bootstrap chat-sdk deployments-cicd env-vars marketplace next-forge nextjs react-best-practices routing-middleware runtime-cache shadcn turbopack turborepo vercel-agent vercel-cli vercel-functions vercel-sandbox vercel-storage verification workflow

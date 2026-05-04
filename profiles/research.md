@@ -1,6 +1,4 @@
 # Scenario: research, gather sources, extract knowledge, and verify references.
 dokobot/skills | dokobot
 alchaincyf/huashu-skills | huashu-research huashu-info-search huashu-material-search
-anthropics/skills | pdf
-intellectronica/agent-skills | context7
 openai/skills | notion-research-documentation

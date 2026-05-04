@@ -1,0 +1,22 @@
+{
+  "name": "@yatmn/skillpack",
+  "version": "0.1.0",
+  "description": "Project-level skill profile initializer for Codex-style agent projects.",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "skillpack": "bin/skillpack"
+  },
+  "files": [
+    "bin/",
+    "profiles/",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "bash tests/skillpack_cli_test.sh"
+  }
+}

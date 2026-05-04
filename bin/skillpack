@@ -8,6 +8,8 @@ usage() {
 Usage:
   skillpack list
   skillpack show <profile>
+  skillpack <profile> [--agent <agent>]
+  skillpack -<profile> [--agent <agent>]
   skillpack init <profile> [--agent <agent>]
   skillpack add <profile> [--agent <agent>]
   skillpack update
@@ -56,7 +58,7 @@ profile_path() {
     ""|*/*|*..*) die "invalid profile name: ${profile}" ;;
   esac
 
-  printf '%s/%s.txt' "$PROFILE_DIR" "$profile"
+  printf '%s/%s.md' "$PROFILE_DIR" "$profile"
 }
 
 require_profile() {
@@ -75,9 +77,9 @@ list_profiles() {
 
   [ -d "$PROFILE_DIR" ] || die "profile directory not found: ${PROFILE_DIR}"
 
-  for file in "${PROFILE_DIR}"/*.txt; do
+  for file in "${PROFILE_DIR}"/*.md; do
     [ -e "$file" ] || continue
-    name="$(basename "$file" .txt)"
+    name="$(basename "$file" .md)"
     printf '%s\n' "$name"
   done
 }
@@ -87,7 +89,7 @@ profile_skill_names() {
 
   [ -d "$PROFILE_DIR" ] || die "profile directory not found: ${PROFILE_DIR}"
 
-  for file in "${PROFILE_DIR}"/*.txt; do
+  for file in "${PROFILE_DIR}"/*.md; do
     [ -e "$file" ] || continue
 
     while IFS= read -r line || [ -n "$line" ]; do
@@ -129,14 +131,26 @@ coverage() {
       n = split(skills, names, /[[:space:]]+/)
       for (i = 1; i <= n; i++) {
         if (names[i] != "") {
-          print source "\t" names[i]
+          print source "\t" names[i] "\t" FILENAME
         }
       }
     }
-  ' "${PROFILE_DIR}"/*.txt > "$pairs_file"
+  ' "${PROFILE_DIR}"/*.md > "$pairs_file"
 
   awk -F '\t' '$1 ~ /^!/ { print $1 " | " $2 }' "$pairs_file" | sort -u > "$catalog_file"
-  sort "$pairs_file" | uniq -d > "$duplicate_file"
+  awk -F '\t' '
+    {
+      count[$2]++
+      lines[$2] = lines[$2] $3 ": " $1 " | " $2 "\n"
+    }
+    END {
+      for (skill in count) {
+        if (count[skill] > 1) {
+          printf "%s", lines[skill]
+        }
+      }
+    }
+  ' "$pairs_file" | sort > "$duplicate_file"
   awk -F '\t' '$1 !~ /^!/ { print $1 }' "$pairs_file" | sort -u > "$source_file"
   awk -F '\t' '{ print $2 }' "$pairs_file" | sort -u > "$skill_file"
 
@@ -150,7 +164,7 @@ coverage() {
   echo "profile skills: ${skill_count}"
   echo "source/skill pairs: ${pair_count}"
   echo "catalog-only pairs: ${catalog_count}"
-  echo "overlap source/skill pairs: ${duplicate_count}"
+  echo "overlap profile skills: ${duplicate_count}"
 
   if [ "$catalog_count" -gt 0 ]; then
     echo
@@ -160,13 +174,13 @@ coverage() {
 
   if [ "$duplicate_count" -gt 0 ]; then
     echo
-    echo "Overlap source/skill pairs:"
+    echo "Overlap profile skills:"
     cat "$duplicate_file"
   fi
 
   rm -f "$pairs_file" "$catalog_file" "$duplicate_file" "$source_file" "$skill_file"
 
-  [ "$catalog_count" -eq 0 ]
+  [ "$catalog_count" -eq 0 ] && [ "$duplicate_count" -eq 0 ]
 }
 
 expand_profile() {
@@ -364,8 +378,21 @@ main() {
       usage
       ;;
     *)
-      usage >&2
-      exit 1
+      case "$command" in
+        --*)
+          profile="${command#--}"
+          ;;
+        -*)
+          profile="${command#-}"
+          ;;
+        *)
+          profile="$command"
+          ;;
+      esac
+      require_profile "$profile" >/dev/null
+      shift
+      parse_agent_args "$@"
+      install_profile "$profile" "$AGENT"
       ;;
   esac
 }

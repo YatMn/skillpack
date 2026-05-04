@@ -1,3 +1,0 @@
-# Scenario: write, edit, proofread, and produce creator content.
-alchaincyf/huashu-skills | huashu-agent-swarm huashu-article-edit huashu-article-to-x huashu-data-pro huashu-douyin-script huashu-image-upload huashu-info-search huashu-material-search huashu-md-to-pdf huashu-prompt-save huashu-proofreading huashu-research huashu-script-polish huashu-slides huashu-speech-coach huashu-topic-gen huashu-video-check huashu-video-outline huashu-wechat-image huashu-xhs-image
-anthropics/skills | doc-coauthoring internal-comms pptx

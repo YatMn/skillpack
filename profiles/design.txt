@@ -1,5 +1,0 @@
-# Scenario: create visual design, static assets, UI direction, and motion.
-anthropics/skills | algorithmic-art brand-guidelines canvas-design frontend-design slack-gif-creator theme-factory web-artifacts-builder pptx
-alchaincyf/huashu-design | huashu-design
-alchaincyf/huashu-skills | huashu-image-upload huashu-wechat-image huashu-xhs-image
-openai/skills | imagegen
