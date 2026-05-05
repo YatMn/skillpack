@@ -2,10 +2,10 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Project-level skill profile installer for Codex-style agent projects.
+Project-level skill profile installer for Codex, Claude Code, and Cursor.
 
 `skillpack` does not store real skill contents. It expands a profile from
-`profiles/*.md`, then installs those skills into the current project through
+`profiles/*.yaml`, then installs those skills into the current project through
 `npx skills`.
 
 ## Quick Start
@@ -13,21 +13,34 @@ Project-level skill profile installer for Codex-style agent projects.
 In a project that needs local agent skills:
 
 ```bash
-npx github:YatMn/skillpack dev
+npx github:YatMn/skillpack dev --target codex
 ```
 
 Equivalent shortcuts:
 
 ```bash
-npx github:YatMn/skillpack -dev
-npx github:YatMn/skillpack --dev
+npx github:YatMn/skillpack -dev --target codex
+npx github:YatMn/skillpack --dev --target codex
 ```
 
-The default agent is `codex`:
+Install the same profile for multiple agents:
 
 ```bash
-npx github:YatMn/skillpack dev --agent claude-code
+npx github:YatMn/skillpack dev --target codex,cursor
+npx github:YatMn/skillpack dev --target all
 ```
+
+`--target` is required for install commands. Supported targets are `codex`,
+`claude`, `cursor`, and `all`.
+
+Target output directories:
+
+| Target | Project skills directory |
+| --- | --- |
+| `codex` | `.agents/skills` |
+| `claude` | `.claude/skills` |
+| `cursor` | `.cursor/skills` |
+| `all` | Installs `codex`, `claude`, and `cursor`. |
 
 ## Profiles
 
@@ -192,8 +205,8 @@ cd skillpack
 Then from any project:
 
 ```bash
-skillpack dev
-skillpack add writing
+skillpack dev --target codex
+skillpack add writing --target codex,cursor
 ```
 
 ## Commands
@@ -201,35 +214,49 @@ skillpack add writing
 ```bash
 skillpack list
 skillpack show dev
-skillpack dev
-skillpack -dev
-skillpack init dev
-skillpack add writing
+skillpack dev --target codex
+skillpack -dev --target codex
+skillpack init dev --target codex,cursor
+skillpack add writing --target all
 skillpack update
 skillpack restore
 skillpack doctor
+skillpack doctor --target codex,cursor
 skillpack coverage
 ```
 
 ## Profile Format
 
-```text
-# source | skill names
-obra/superpowers | writing-plans systematic-debugging
-@writing
+Profiles are readable YAML files with a small, Bash-parsed subset:
+
+```yaml
+name: dev
+title: Development
+summary: Build, debug, test, review, and ship software projects.
+
+includes: []
+
+skills:
+  - source: obra/superpowers
+    why: Planning and disciplined development workflow.
+    names:
+      - writing-plans
+      - systematic-debugging
 ```
 
-Keep `profiles/all.md` as an aggregate. Add real source lines to the specific
-scenario profile first.
+Keep `profiles/all.yaml` as an aggregate. Add real skill entries to the
+specific scenario profile first.
 
 ## Development
 
 ```bash
-bash -n install.sh bin/skillpack tests/skillpack_cli_test.sh
-npm test
+bash -n install.sh bin/skillpack
 ./bin/skillpack list
 ./bin/skillpack show dev
+./bin/skillpack show all
 ./bin/skillpack coverage
+./bin/skillpack doctor
+./bin/skillpack doctor --target codex,cursor
 npm --cache /private/tmp/skillpack-npm-cache pack --dry-run
 ```
 
@@ -237,10 +264,9 @@ npm --cache /private/tmp/skillpack-npm-cache pack --dry-run
 
 ```text
 bin/skillpack       Bash CLI
-profiles/*.md       Profile definitions
+profiles/*.yaml     Profile definitions
 install.sh          Local symlink installer
 package.json        Package metadata for npx/GitHub installs
-tests/              CLI contract tests
 ```
 
 ## License

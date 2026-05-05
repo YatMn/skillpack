@@ -1,0 +1,82 @@
+name: dev
+title: Development
+summary: Build, plan, debug, review, and finish software projects.
+
+includes: []
+
+skills:
+  - source: obra/superpowers
+    why: Planning, TDD, debugging, review, verification, and branch workflow.
+    names:
+      - brainstorming
+      - dispatching-parallel-agents
+      - executing-plans
+      - finishing-a-development-branch
+      - receiving-code-review
+      - requesting-code-review
+      - subagent-driven-development
+      - systematic-debugging
+      - test-driven-development
+      - using-git-worktrees
+      - using-superpowers
+      - verification-before-completion
+      - writing-plans
+      - writing-skills
+
+  - source: intellectronica/agent-skills
+    why: Current library documentation and API references.
+    names:
+      - context7
+
+  - source: anthropics/skills
+    why: API, MCP, frontend, and web app testing support.
+    names:
+      - claude-api
+      - mcp-builder
+      - frontend-design
+      - webapp-testing
+
+  - source: openai/skills
+    why: GitHub workflow, OpenAI docs, plugin setup, and skill authoring.
+    names:
+      - gh-address-comments
+      - gh-fix-ci
+      - notion-knowledge-capture
+      - notion-spec-to-implementation
+      - openai-docs
+      - plugin-creator
+      - skill-creator
+      - skill-installer
+      - yeet
+
+  - source: supabase/agent-skills
+    why: Supabase and Postgres performance guidance.
+    names:
+      - supabase-postgres-best-practices
+
+  - source: vercel/vercel-plugin
+    why: Next.js, AI apps, deployment, storage, and Vercel platform workflow.
+    names:
+      - ai-gateway
+      - ai-sdk
+      - auth
+      - bootstrap
+      - chat-sdk
+      - deployments-cicd
+      - env-vars
+      - marketplace
+      - next-forge
+      - nextjs
+      - react-best-practices
+      - routing-middleware
+      - runtime-cache
+      - shadcn
+      - turbopack
+      - turborepo
+      - vercel-agent
+      - vercel-cli
+      - vercel-functions
+      - vercel-sandbox
+      - vercel-storage
+      - verification
+      - workflow

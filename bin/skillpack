@@ -1,21 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEFAULT_AGENT="codex"
-
 usage() {
   cat <<'EOF'
 Usage:
   skillpack list
   skillpack show <profile>
-  skillpack <profile> [--agent <agent>]
-  skillpack -<profile> [--agent <agent>]
-  skillpack init <profile> [--agent <agent>]
-  skillpack add <profile> [--agent <agent>]
+  skillpack <profile> --target <target[,target...]>
+  skillpack -<profile> --target <target[,target...]>
+  skillpack init <profile> --target <target[,target...]>
+  skillpack add <profile> --target <target[,target...]>
   skillpack update
   skillpack restore
-  skillpack doctor
+  skillpack doctor [--target <target[,target...]>]
   skillpack coverage
+
+Targets:
+  codex    Install project skills for Codex.
+  claude   Install project skills for Claude Code.
+  cursor   Install project skills for Cursor.
+  all      Install project skills for codex, claude, and cursor.
 EOF
 }
 
@@ -58,7 +62,7 @@ profile_path() {
     ""|*/*|*..*) die "invalid profile name: ${profile}" ;;
   esac
 
-  printf '%s/%s.md' "$PROFILE_DIR" "$profile"
+  printf '%s/%s.yaml' "$PROFILE_DIR" "$profile"
 }
 
 require_profile() {
@@ -77,65 +81,139 @@ list_profiles() {
 
   [ -d "$PROFILE_DIR" ] || die "profile directory not found: ${PROFILE_DIR}"
 
-  for file in "${PROFILE_DIR}"/*.md; do
+  for file in "${PROFILE_DIR}"/*.yaml; do
     [ -e "$file" ] || continue
-    name="$(basename "$file" .md)"
+    name="$(basename "$file" .yaml)"
     printf '%s\n' "$name"
   done
 }
 
-profile_skill_names() {
-  local file line stripped skills_part skill
+parse_profile_yaml() {
+  local path="$1"
 
-  [ -d "$PROFILE_DIR" ] || die "profile directory not found: ${PROFILE_DIR}"
+  awk '
+    function trim(value) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      return value
+    }
 
-  for file in "${PROFILE_DIR}"/*.md; do
-    [ -e "$file" ] || continue
+    function clean(value) {
+      value = trim(value)
+      gsub(/^`|`$/, "", value)
+      gsub(/^"|"$/, "", value)
+      gsub(/^'\''|'\''$/, "", value)
+      return value
+    }
 
-    while IFS= read -r line || [ -n "$line" ]; do
-      stripped="$(trim "${line%%#*}")"
-      [ -n "$stripped" ] || continue
+    function flush_skill() {
+      if (source != "") {
+        skills = trim(skills)
+        if (skills == "") {
+          printf "E\tmissing skills for source %s\n", source
+        } else {
+          printf "S\t%s\t%s\n", source, skills
+        }
+      }
+      source = ""
+      skills = ""
+    }
 
-      case "$stripped" in
-        @*) continue ;;
-        *"|"*)
-          skills_part="$(trim "${stripped#*|}")"
-          for skill in $skills_part; do
-            [ -n "$skill" ] && printf '%s\n' "$skill"
-          done
-          ;;
-      esac
-    done < "$file"
-  done | sort -u
+    /^[[:space:]]*($|#)/ { next }
+    /^[[:space:]]*---[[:space:]]*$/ { next }
+
+    /^[^[:space:]][^:]*:[[:space:]]*/ {
+      key = $0
+      sub(/:.*/, "", key)
+      section = key
+      in_names = 0
+
+      if (section != "skills") {
+        flush_skill()
+      }
+
+      next
+    }
+
+    section == "includes" && /^[[:space:]]*-[[:space:]]*/ {
+      include = $0
+      sub(/^[[:space:]]*-[[:space:]]*/, "", include)
+      include = clean(include)
+      if (include != "" && include != "none") {
+        printf "I\t%s\n", include
+      }
+      next
+    }
+
+    section == "skills" && /^[[:space:]]*-[[:space:]]*source:[[:space:]]*/ {
+      flush_skill()
+      source = $0
+      sub(/^[[:space:]]*-[[:space:]]*source:[[:space:]]*/, "", source)
+      source = clean(source)
+      if (source == "") {
+        printf "E\tmissing source\n"
+      }
+      in_names = 0
+      next
+    }
+
+    section == "skills" && /^[[:space:]]*names:[[:space:]]*/ {
+      in_names = 1
+      next
+    }
+
+    section == "skills" && in_names && /^[[:space:]]*-[[:space:]]*/ {
+      skill = $0
+      sub(/^[[:space:]]*-[[:space:]]*/, "", skill)
+      skill = clean(skill)
+      if (skill != "") {
+        skills = skills " " skill
+      }
+      next
+    }
+
+    END {
+      flush_skill()
+    }
+  ' "$path"
 }
 
 coverage() {
-  local pairs_file catalog_file duplicate_file source_file skill_file
-  local source_count skill_count pair_count catalog_count duplicate_count
+  local pairs_file catalog_file duplicate_file source_file skill_file includes_file
+  local source_count skill_count pair_count catalog_count duplicate_count include_error_count
+  local file profile record_type record_value source skills_part skill
 
   pairs_file="$(mktemp)"
   catalog_file="$(mktemp)"
   duplicate_file="$(mktemp)"
   source_file="$(mktemp)"
   skill_file="$(mktemp)"
+  includes_file="$(mktemp)"
 
-  awk -F '|' '
-    /^[[:space:]]*#/ { next }
-    /^[[:space:]]*$/ { next }
-    /^[[:space:]]*@/ { next }
-    NF >= 2 {
-      source = $1
-      skills = $2
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", source)
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", skills)
-      n = split(skills, names, /[[:space:]]+/)
-      for (i = 1; i <= n; i++) {
-        if (names[i] != "") {
-          print source "\t" names[i] "\t" FILENAME
-        }
-      }
-    }
-  ' "${PROFILE_DIR}"/*.md > "$pairs_file"
+  for file in "${PROFILE_DIR}"/*.yaml; do
+    [ -e "$file" ] || continue
+    profile="$(basename "$file" .yaml)"
+
+    while IFS=$'\t' read -r record_type record_value skills_part || [ -n "$record_type" ]; do
+      case "$record_type" in
+        I)
+          if ! require_profile "$record_value" >/dev/null; then
+            printf '%s includes missing profile: %s\n' "$profile" "$record_value" >> "$includes_file"
+          fi
+          ;;
+        S)
+          source="$record_value"
+          [ -n "$source" ] || die "missing source in ${file}"
+          [ -n "$skills_part" ] || die "missing skills in ${file}: ${source}"
+          for skill in $skills_part; do
+            [ -n "$skill" ] && printf '%s\t%s\t%s\n' "$source" "$skill" "$file" >> "$pairs_file"
+          done
+          ;;
+        E)
+          die "invalid profile YAML in ${file}: ${record_value}"
+          ;;
+      esac
+    done < <(parse_profile_yaml "$file")
+  done
 
   awk -F '\t' '$1 ~ /^!/ { print $1 " | " $2 }' "$pairs_file" | sort -u > "$catalog_file"
   awk -F '\t' '
@@ -159,12 +237,14 @@ coverage() {
   pair_count="$(wc -l < "$pairs_file" | tr -d ' ')"
   catalog_count="$(wc -l < "$catalog_file" | tr -d ' ')"
   duplicate_count="$(wc -l < "$duplicate_file" | tr -d ' ')"
+  include_error_count="$(wc -l < "$includes_file" | tr -d ' ')"
 
   echo "installable sources: ${source_count}"
   echo "profile skills: ${skill_count}"
   echo "source/skill pairs: ${pair_count}"
   echo "catalog-only pairs: ${catalog_count}"
   echo "overlap profile skills: ${duplicate_count}"
+  echo "missing profile includes: ${include_error_count}"
 
   if [ "$catalog_count" -gt 0 ]; then
     echo
@@ -178,15 +258,21 @@ coverage() {
     cat "$duplicate_file"
   fi
 
-  rm -f "$pairs_file" "$catalog_file" "$duplicate_file" "$source_file" "$skill_file"
+  if [ "$include_error_count" -gt 0 ]; then
+    echo
+    echo "Missing profile includes:"
+    cat "$includes_file"
+  fi
 
-  [ "$catalog_count" -eq 0 ] && [ "$duplicate_count" -eq 0 ]
+  rm -f "$pairs_file" "$catalog_file" "$duplicate_file" "$source_file" "$skill_file" "$includes_file"
+
+  [ "$catalog_count" -eq 0 ] && [ "$duplicate_count" -eq 0 ] && [ "$include_error_count" -eq 0 ]
 }
 
 expand_profile() {
   local profile="$1"
   local stack="${2:-}"
-  local path line stripped source skills_part
+  local path record_type record_value skills_part source
 
   case ":${stack}:" in
     *":${profile}:"*) die "profile include cycle: ${stack}:${profile}" ;;
@@ -196,43 +282,117 @@ expand_profile() {
     return 1
   fi
 
-  while IFS= read -r line || [ -n "$line" ]; do
-    stripped="$(trim "${line%%#*}")"
-    [ -n "$stripped" ] || continue
-
-    case "$stripped" in
-      @*)
-        if ! expand_profile "${stripped#@}" "${stack}:${profile}"; then
+  while IFS=$'\t' read -r record_type record_value skills_part || [ -n "$record_type" ]; do
+    case "$record_type" in
+      I)
+        if ! expand_profile "$record_value" "${stack}:${profile}"; then
           return 1
         fi
         ;;
-      *"|"*)
-        source="$(trim "${stripped%%|*}")"
-        skills_part="$(trim "${stripped#*|}")"
-        [ -n "$source" ] || die "missing source in ${path}: ${line}"
-        [ -n "$skills_part" ] || die "missing skills in ${path}: ${line}"
+      S)
+        source="$record_value"
+        [ -n "$source" ] || die "missing source in ${path}"
+        [ -n "$skills_part" ] || die "missing skills in ${path}: ${source}"
         printf '%s | %s\n' "$source" "$skills_part"
         ;;
-      *)
-        die "invalid profile line in ${path}: ${line}"
+      E)
+        die "invalid profile YAML in ${path}: ${record_value}"
         ;;
     esac
-  done < "$path"
+  done < <(parse_profile_yaml "$path")
 }
 
-parse_agent_args() {
-  AGENT="$DEFAULT_AGENT"
+TARGETS=""
+TARGETS_FROM_ALL=0
+
+target_required_message() {
+  printf '%s\n' "target is required. Use --target codex,cursor,claude or --target all."
+}
+
+target_to_agent() {
+  case "$1" in
+    codex) printf '%s\n' "codex" ;;
+    claude) printf '%s\n' "claude-code" ;;
+    cursor) printf '%s\n' "cursor" ;;
+    *) die "unknown target: $1" ;;
+  esac
+}
+
+target_skill_dir() {
+  case "$1" in
+    codex) printf '%s\n' ".agents/skills" ;;
+    claude) printf '%s\n' ".claude/skills" ;;
+    cursor) printf '%s\n' ".cursor/skills" ;;
+    *) die "unknown target: $1" ;;
+  esac
+}
+
+append_single_target() {
+  local target="$1"
+
+  target="$(trim "$target")"
+  [ -n "$target" ] || die "--target contains an empty value"
+
+  case "$target" in
+    codex|claude|cursor) ;;
+    all)
+      [ -z "$TARGETS" ] || die "--target all cannot be combined with other targets"
+      TARGETS="codex claude cursor"
+      TARGETS_FROM_ALL=1
+      return
+      ;;
+    *) die "unknown target: $target" ;;
+  esac
+
+  [ "$TARGETS_FROM_ALL" -eq 0 ] || die "--target all cannot be combined with other targets"
+
+  case " ${TARGETS} " in
+    *" ${target} "*) ;;
+    *) TARGETS="${TARGETS}${TARGETS:+ }${target}" ;;
+  esac
+}
+
+append_target_value() {
+  local value="$1"
+  local remaining target
+
+  value="$(trim "$value")"
+  case "$value" in
+    ""|,*|*,|*,,*) die "--target contains an empty value" ;;
+  esac
+
+  remaining="$value"
+  while [ -n "$remaining" ]; do
+    case "$remaining" in
+      *,*)
+        target="${remaining%%,*}"
+        remaining="${remaining#*,}"
+        ;;
+      *)
+        target="$remaining"
+        remaining=""
+        ;;
+    esac
+    append_single_target "$target"
+  done
+}
+
+parse_target_args() {
+  local required="$1"
+  shift
+
+  TARGETS=""
+  TARGETS_FROM_ALL=0
 
   while [ "$#" -gt 0 ]; do
     case "$1" in
-      --agent)
+      --target)
         shift
-        [ "$#" -gt 0 ] || die "--agent requires a value"
-        AGENT="$1"
+        [ "$#" -gt 0 ] || die "--target requires a value"
+        append_target_value "$1"
         ;;
-      --agent=*)
-        AGENT="${1#--agent=}"
-        [ -n "$AGENT" ] || die "--agent requires a value"
+      --target=*)
+        append_target_value "${1#--target=}"
         ;;
       *)
         die "unknown argument: $1"
@@ -240,12 +400,17 @@ parse_agent_args() {
     esac
     shift
   done
+
+  if [ -z "$TARGETS" ] && [ "$required" = "required" ]; then
+    die "$(target_required_message)"
+  fi
 }
 
 install_profile() {
   local profile="$1"
-  local agent="$2"
+  local targets="$2"
   local expanded line source skills_part install_file grouped_file
+  local target agent skill_dir
   local -a skills
 
   if ! expanded="$(expand_profile "$profile")"; then
@@ -253,7 +418,6 @@ install_profile() {
   fi
   [ -n "$expanded" ] || die "profile has no install entries: ${profile}"
 
-  mkdir -p .agents/skills
   install_file="$(mktemp)"
   grouped_file="$(mktemp)"
 
@@ -286,14 +450,32 @@ install_profile() {
     source="$(trim "${line%%|*}")"
     skills_part="$(trim "${line#*|}")"
     read -r -a skills <<< "$skills_part"
-    npx skills add "$source" --skill "${skills[@]}" --agent "$agent" -y </dev/null
+    [ "${#skills[@]}" -gt 0 ] || die "profile ${profile} has an empty skill list for ${source}"
   done < "$grouped_file"
+
+  [ -s "$grouped_file" ] || die "profile has no installable entries: ${profile}"
+
+  for target in $targets; do
+    agent="$(target_to_agent "$target")"
+    skill_dir="$(target_skill_dir "$target")"
+    mkdir -p "$skill_dir"
+    echo "Installing ${profile} for ${target}"
+
+    while IFS= read -r line || [ -n "$line" ]; do
+      source="$(trim "${line%%|*}")"
+      skills_part="$(trim "${line#*|}")"
+      read -r -a skills <<< "$skills_part"
+      npx skills add "$source" --skill "${skills[@]}" --agent "$agent" -y </dev/null
+    done < "$grouped_file"
+  done
 
   rm -f "$install_file" "$grouped_file"
 }
 
 doctor() {
+  local targets="${1:-}"
   local failed=0
+  local target skill_dir
 
   if command -v npx >/dev/null 2>&1; then
     echo "ok: npx found"
@@ -316,11 +498,14 @@ doctor() {
     failed=1
   fi
 
-  if [ -d .agents/skills ]; then
-    echo "ok: .agents/skills exists"
-  else
-    echo "warn: .agents/skills missing"
-  fi
+  for target in $targets; do
+    skill_dir="$(target_skill_dir "$target")"
+    if [ -d "$skill_dir" ]; then
+      echo "ok: ${skill_dir} exists"
+    else
+      echo "warn: ${skill_dir} missing"
+    fi
+  done
 
   if [ -f skills-lock.json ]; then
     echo "ok: skills-lock.json exists"
@@ -351,8 +536,8 @@ main() {
       [ "$#" -gt 0 ] || die "${command} requires a profile"
       profile="$1"
       shift
-      parse_agent_args "$@"
-      install_profile "$profile" "$AGENT"
+      parse_target_args required "$@"
+      install_profile "$profile" "$TARGETS"
       ;;
     update)
       shift
@@ -366,8 +551,8 @@ main() {
       ;;
     doctor)
       shift
-      [ "$#" -eq 0 ] || die "doctor does not accept arguments"
-      doctor
+      parse_target_args optional "$@"
+      doctor "$TARGETS"
       ;;
     coverage)
       shift
@@ -391,8 +576,8 @@ main() {
       esac
       require_profile "$profile" >/dev/null
       shift
-      parse_agent_args "$@"
-      install_profile "$profile" "$AGENT"
+      parse_target_args required "$@"
+      install_profile "$profile" "$TARGETS"
       ;;
   esac
 }

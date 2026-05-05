@@ -1,0 +1,30 @@
+name: writing
+title: Writing
+summary: Write, edit, proofread, and produce creator content.
+
+includes: []
+
+skills:
+  - source: alchaincyf/huashu-skills
+    why: Creator writing, scripts, social posts, proofreading, and article images.
+    names:
+      - huashu-agent-swarm
+      - huashu-article-edit
+      - huashu-article-to-x
+      - huashu-douyin-script
+      - huashu-prompt-save
+      - huashu-proofreading
+      - huashu-script-polish
+      - huashu-speech-coach
+      - huashu-topic-gen
+      - huashu-video-check
+      - huashu-video-outline
+      - huashu-image-upload
+      - huashu-wechat-image
+      - huashu-xhs-image
+
+  - source: anthropics/skills
+    why: Collaborative writing and internal communication.
+    names:
+      - doc-coauthoring
+      - internal-comms

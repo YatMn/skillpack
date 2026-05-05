@@ -1,0 +1,12 @@
+name: all
+title: All Profiles
+summary: Aggregate profile for every scenario profile.
+
+includes:
+  - dev
+  - design
+  - writing
+  - research
+  - office
+
+skills: []

@@ -2,9 +2,9 @@
 
 [English](README.md) | 简体中文
 
-面向 Codex 风格 agent 项目的项目级 skill profile 安装器。
+面向 Codex、Claude Code 和 Cursor 的项目级 skill profile 安装器。
 
-`skillpack` 不保存真实 skill 内容。它只展开 `profiles/*.md` 里的 profile，然后
+`skillpack` 不保存真实 skill 内容。它只展开 `profiles/*.yaml` 里的 profile，然后
 通过 `npx skills` 把 skills 安装到当前项目。
 
 ## 快速开始
@@ -12,21 +12,34 @@
 在需要 local agent skills 的项目里运行：
 
 ```bash
-npx github:YatMn/skillpack dev
+npx github:YatMn/skillpack dev --target codex
 ```
 
 等价快捷写法：
 
 ```bash
-npx github:YatMn/skillpack -dev
-npx github:YatMn/skillpack --dev
+npx github:YatMn/skillpack -dev --target codex
+npx github:YatMn/skillpack --dev --target codex
 ```
 
-默认 agent 是 `codex`：
+把同一个 profile 安装给多个 agent：
 
 ```bash
-npx github:YatMn/skillpack dev --agent claude-code
+npx github:YatMn/skillpack dev --target codex,cursor
+npx github:YatMn/skillpack dev --target all
 ```
+
+安装命令必须显式传 `--target`。支持的 target 是 `codex`、`claude`、
+`cursor` 和 `all`。
+
+Target 输出目录：
+
+| Target | Project skills directory |
+| --- | --- |
+| `codex` | `.agents/skills` |
+| `claude` | `.claude/skills` |
+| `cursor` | `.cursor/skills` |
+| `all` | 同时安装 `codex`、`claude` 和 `cursor`。 |
 
 ## Profiles
 
@@ -191,8 +204,8 @@ cd skillpack
 然后在任意项目里运行：
 
 ```bash
-skillpack dev
-skillpack add writing
+skillpack dev --target codex
+skillpack add writing --target codex,cursor
 ```
 
 ## 命令
@@ -200,34 +213,48 @@ skillpack add writing
 ```bash
 skillpack list
 skillpack show dev
-skillpack dev
-skillpack -dev
-skillpack init dev
-skillpack add writing
+skillpack dev --target codex
+skillpack -dev --target codex
+skillpack init dev --target codex,cursor
+skillpack add writing --target all
 skillpack update
 skillpack restore
 skillpack doctor
+skillpack doctor --target codex,cursor
 skillpack coverage
 ```
 
 ## Profile 格式
 
-```text
-# source | skill names
-obra/superpowers | writing-plans systematic-debugging
-@writing
+Profiles 是可读 YAML 文件，CLI 只解析一个很小的 Bash-friendly 子集：
+
+```yaml
+name: dev
+title: Development
+summary: Build, debug, test, review, and ship software projects.
+
+includes: []
+
+skills:
+  - source: obra/superpowers
+    why: Planning and disciplined development workflow.
+    names:
+      - writing-plans
+      - systematic-debugging
 ```
 
-`profiles/all.md` 只做聚合。新增 source 行时，先放进具体场景 profile。
+`profiles/all.yaml` 只做聚合。新增 skill 条目时，先放进具体场景 profile。
 
 ## 开发验证
 
 ```bash
-bash -n install.sh bin/skillpack tests/skillpack_cli_test.sh
-npm test
+bash -n install.sh bin/skillpack
 ./bin/skillpack list
 ./bin/skillpack show dev
+./bin/skillpack show all
 ./bin/skillpack coverage
+./bin/skillpack doctor
+./bin/skillpack doctor --target codex,cursor
 npm --cache /private/tmp/skillpack-npm-cache pack --dry-run
 ```
 
@@ -235,10 +262,9 @@ npm --cache /private/tmp/skillpack-npm-cache pack --dry-run
 
 ```text
 bin/skillpack       Bash CLI
-profiles/*.md       Profile definitions
+profiles/*.yaml     Profile definitions
 install.sh          Local symlink installer
 package.json        npx/GitHub 安装所需的 package metadata
-tests/              CLI contract tests
 ```
 
 ## License

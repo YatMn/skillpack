@@ -1,0 +1,26 @@
+name: office
+title: Office
+summary: Handle documents, spreadsheets, presentations, and calendars.
+
+includes: []
+
+skills:
+  - source: anthropics/skills
+    why: Document, spreadsheet, slide, and PDF file operations.
+    names:
+      - pdf
+      - docx
+      - xlsx
+      - pptx
+
+  - source: openai/skills
+    why: Meeting preparation with Notion context.
+    names:
+      - notion-meeting-intelligence
+
+  - source: alchaincyf/huashu-skills
+    why: Data analysis, PDF conversion, and slide creation workflows.
+    names:
+      - huashu-data-pro
+      - huashu-md-to-pdf
+      - huashu-slides
