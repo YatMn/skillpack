@@ -10,6 +10,8 @@ Usage:
   skillpack -<profile> --target <target[,target...]>
   skillpack init <profile> --target <target[,target...]>
   skillpack add <profile> --target <target[,target...]>
+  skillpack snapshot --target <target[,target...]> [--project <path>] [--output <path>]
+  skillpack apply [snapshot-path] --target <target[,target...]> [--project <path>] [--dry-run]
   skillpack update [--project <path>]
   skillpack restore [--project <path>]
   skillpack doctor [--target <target[,target...]>] [--project <path>]
@@ -59,6 +61,7 @@ trim() {
 SCRIPT_DIR="$(resolve_script_path)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 PROFILE_DIR="${ROOT_DIR}/profiles"
+INVOCATION_DIR="$(pwd)"
 
 profile_path() {
   local profile="$1"
@@ -325,6 +328,8 @@ TARGETS=""
 TARGETS_FROM_ALL=0
 PROJECT_DIR=""
 ALLOW_SELF_INSTALL=0
+SNAPSHOT_PATH=""
+DRY_RUN=0
 
 target_required_message() {
   printf '%s\n' "target is required. Use --target codex,cursor,claude or --target all."
@@ -442,6 +447,99 @@ parse_target_args() {
   resolve_project_dir
 }
 
+parse_snapshot_args() {
+  TARGETS=""
+  TARGETS_FROM_ALL=0
+  PROJECT_DIR=""
+  ALLOW_SELF_INSTALL=0
+  SNAPSHOT_PATH=""
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --target)
+        shift
+        [ "$#" -gt 0 ] || die "--target requires a value"
+        append_target_value "$1"
+        ;;
+      --target=*)
+        append_target_value "${1#--target=}"
+        ;;
+      --project)
+        shift
+        [ "$#" -gt 0 ] || die "--project requires a value"
+        PROJECT_DIR="$1"
+        ;;
+      --project=*)
+        PROJECT_DIR="${1#--project=}"
+        ;;
+      --output)
+        shift
+        [ "$#" -gt 0 ] || die "--output requires a value"
+        SNAPSHOT_PATH="$1"
+        ;;
+      --output=*)
+        SNAPSHOT_PATH="${1#--output=}"
+        ;;
+      *)
+        die "unknown argument: $1"
+        ;;
+    esac
+    shift
+  done
+
+  [ -n "$TARGETS" ] || die "$(target_required_message)"
+  resolve_project_dir
+  resolve_snapshot_path write
+}
+
+parse_apply_args() {
+  TARGETS=""
+  TARGETS_FROM_ALL=0
+  PROJECT_DIR=""
+  ALLOW_SELF_INSTALL=0
+  SNAPSHOT_PATH=""
+  DRY_RUN=0
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --target)
+        shift
+        [ "$#" -gt 0 ] || die "--target requires a value"
+        append_target_value "$1"
+        ;;
+      --target=*)
+        append_target_value "${1#--target=}"
+        ;;
+      --project)
+        shift
+        [ "$#" -gt 0 ] || die "--project requires a value"
+        PROJECT_DIR="$1"
+        ;;
+      --project=*)
+        PROJECT_DIR="${1#--project=}"
+        ;;
+      --dry-run)
+        DRY_RUN=1
+        ;;
+      --allow-self-install)
+        ALLOW_SELF_INSTALL=1
+        ;;
+      --*)
+        die "unknown argument: $1"
+        ;;
+      *)
+        [ -z "$SNAPSHOT_PATH" ] || die "apply accepts at most one snapshot path"
+        SNAPSHOT_PATH="$1"
+        ;;
+    esac
+    shift
+  done
+
+  [ -n "$TARGETS" ] || die "$(target_required_message)"
+  resolve_project_dir
+  resolve_snapshot_path read
+}
+
 resolve_project_dir() {
   local project="${PROJECT_DIR:-.}"
 
@@ -449,6 +547,24 @@ resolve_project_dir() {
   [ -d "$project" ] || die "project directory not found: ${project}"
 
   PROJECT_DIR="$(cd -P "$project" && pwd)"
+}
+
+resolve_snapshot_path() {
+  local mode="$1"
+
+  if [ -z "$SNAPSHOT_PATH" ]; then
+    SNAPSHOT_PATH="${PROJECT_DIR}/.skillpack/skills.snapshot.yaml"
+    return
+  fi
+
+  case "$SNAPSHOT_PATH" in
+    /*) ;;
+    *) SNAPSHOT_PATH="${INVOCATION_DIR}/${SNAPSHOT_PATH}" ;;
+  esac
+
+  if [ "$mode" = "read" ]; then
+    [ -f "$SNAPSHOT_PATH" ] || die "snapshot file not found: ${SNAPSHOT_PATH}"
+  fi
 }
 
 ensure_not_self_install() {
@@ -619,6 +735,244 @@ doctor() {
   return "$failed"
 }
 
+lock_source_for_skill() {
+  local lock_file="$1"
+  local skill="$2"
+
+  [ -f "$lock_file" ] || return 1
+  command -v node >/dev/null 2>&1 || return 1
+
+  node -e '
+    const fs = require("fs");
+    const lock = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+    const skill = process.argv[2];
+    const entry = lock.skills && lock.skills[skill];
+    if (!entry || typeof entry.source !== "string" || entry.source.length === 0) {
+      process.exit(1);
+    }
+    process.stdout.write(entry.source);
+  ' "$lock_file" "$skill"
+}
+
+write_snapshot() {
+  local output="$1"
+  local targets="$2"
+  local target skill_dir skill_path skill source lock_file
+  local missing_file snapshot_tmp
+  local found_count=0
+
+  lock_file="${PROJECT_DIR}/skills-lock.json"
+  missing_file="$(mktemp)"
+  snapshot_tmp="$(mktemp)"
+
+  {
+    echo "schema: skillpack.snapshot.v1"
+    echo "targets:"
+
+    for target in $targets; do
+      skill_dir="${PROJECT_DIR}/$(target_skill_dir "$target")"
+      echo "  ${target}:"
+      echo "    skills:"
+
+      if [ ! -d "$skill_dir" ]; then
+        continue
+      fi
+
+      while IFS= read -r skill_path || [ -n "$skill_path" ]; do
+        skill="$(basename "$(dirname "$skill_path")")"
+        if source="$(lock_source_for_skill "$lock_file" "$skill")"; then
+          echo "      - name: ${skill}"
+          echo "        source: ${source}"
+          found_count=$((found_count + 1))
+        else
+          printf '%s\n' "$skill" >> "$missing_file"
+        fi
+      done < <(find "$skill_dir" -mindepth 2 -maxdepth 2 -type f -name SKILL.md | sort)
+    done
+  } > "$snapshot_tmp"
+
+  if [ -s "$missing_file" ]; then
+    echo "skillpack: snapshot cannot resolve source for installed skills:" >&2
+    sed 's/^/  - /' "$missing_file" >&2
+    echo "skillpack: ensure skills-lock.json has matching source metadata" >&2
+    rm -f "$missing_file" "$snapshot_tmp"
+    exit 1
+  fi
+
+  mkdir -p "$(dirname "$output")"
+  mv "$snapshot_tmp" "$output"
+  rm -f "$missing_file"
+
+  echo "Snapshot written to ${output}"
+  echo "summary: captured ${found_count} skills"
+}
+
+parse_snapshot_yaml() {
+  local path="$1"
+
+  awk '
+    function trim(value) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      return value
+    }
+
+    /^schema:[[:space:]]*/ {
+      schema = $0
+      sub(/^schema:[[:space:]]*/, "", schema)
+      if (schema != "skillpack.snapshot.v1") {
+        printf "E\tunsupported snapshot schema: %s\n", schema
+      }
+      next
+    }
+
+    /^[[:space:]]{2}[[:alnum:]_-]+:[[:space:]]*$/ {
+      target = trim($0)
+      sub(/:$/, "", target)
+      printf "T\t%s\n", target
+      next
+    }
+
+    /^[[:space:]]*-[[:space:]]*name:[[:space:]]*/ {
+      name = $0
+      sub(/^[[:space:]]*-[[:space:]]*name:[[:space:]]*/, "", name)
+      next
+    }
+
+    /^[[:space:]]*source:[[:space:]]*/ {
+      source = $0
+      sub(/^[[:space:]]*source:[[:space:]]*/, "", source)
+      if (target == "" || name == "" || source == "") {
+        printf "E\tinvalid snapshot skill entry\n"
+      } else {
+        printf "S\t%s\t%s\t%s\n", target, name, source
+      }
+      name = ""
+      source = ""
+      next
+    }
+  ' "$path"
+}
+
+apply_snapshot() {
+  local path="$1"
+  local targets="$2"
+  local record_file install_file grouped_file
+  local record_type target skill source wanted agent skill_dir
+  local installed_count skipped_count newly_installed
+  local line skills_part
+  local -a skills missing_skills still_missing_skills
+
+  ensure_not_self_install
+  [ -f "$path" ] || die "snapshot file not found: ${path}"
+
+  record_file="$(mktemp)"
+  install_file="$(mktemp)"
+  grouped_file="$(mktemp)"
+
+  while IFS=$'\t' read -r record_type target skill source || [ -n "$record_type" ]; do
+    case "$record_type" in
+      T)
+        case " ${targets} " in
+          *" ${target} "*) printf 'T\t%s\t\t\n' "$target" >> "$record_file" ;;
+        esac
+        ;;
+      S)
+        case " ${targets} " in
+          *" ${target} "*) printf 'S\t%s\t%s\t%s\n' "$target" "$skill" "$source" >> "$record_file" ;;
+        esac
+        ;;
+      E)
+        rm -f "$record_file" "$install_file" "$grouped_file"
+        die "invalid snapshot ${path}: ${target}"
+        ;;
+    esac
+  done < <(parse_snapshot_yaml "$path")
+
+  for wanted in $targets; do
+    if ! awk -F '\t' -v wanted="$wanted" '$2 == wanted { found = 1 } END { exit found ? 0 : 1 }' "$record_file"; then
+      rm -f "$record_file" "$install_file" "$grouped_file"
+      die "snapshot has no skills for target: ${wanted}"
+    fi
+  done
+
+  for target in $targets; do
+    agent="$(target_to_agent "$target")"
+    skill_dir="${PROJECT_DIR}/$(target_skill_dir "$target")"
+    if [ "$DRY_RUN" -eq 0 ]; then
+      mkdir -p "$skill_dir"
+    fi
+    installed_count=0
+    skipped_count=0
+    : > "$install_file"
+    : > "$grouped_file"
+
+    echo "Applying ${path} into ${skill_dir}"
+
+    while IFS=$'\t' read -r _ _ skill source || [ -n "$skill" ]; do
+      if [ -f "${skill_dir}/${skill}/SKILL.md" ]; then
+        skipped_count=$((skipped_count + 1))
+      else
+        printf '%s\t%s\n' "$source" "$skill" >> "$install_file"
+      fi
+    done < <(awk -F '\t' -v target="$target" '$1 == "S" && $2 == target { print $1 "\t" $2 "\t" $3 "\t" $4 }' "$record_file")
+
+    awk -F '\t' '
+      !seen_source[$1]++ { order[++count] = $1 }
+      !seen_skill[$1 SUBSEP $2]++ { skills[$1] = skills[$1] " " $2 }
+      END {
+        for (i = 1; i <= count; i++) {
+          source = order[i]
+          print source " |" skills[source]
+        }
+      }
+    ' "$install_file" > "$grouped_file"
+
+    while IFS= read -r line || [ -n "$line" ]; do
+      source="$(trim "${line%%|*}")"
+      skills_part="$(trim "${line#*|}")"
+      read -r -a skills <<< "$skills_part"
+      [ "${#skills[@]}" -gt 0 ] || continue
+
+      if [ "$DRY_RUN" -eq 1 ]; then
+        echo "dry-run add: ${source} (${#skills[@]} missing)"
+        installed_count=$((installed_count + ${#skills[@]}))
+        continue
+      fi
+
+      echo "add: ${source} (${#skills[@]} missing)"
+      (cd "$PROJECT_DIR" && npx skills add "$source" --skill "${skills[@]}" --agent "$agent" -y </dev/null)
+
+      newly_installed=0
+      still_missing_skills=()
+      for skill in "${skills[@]}"; do
+        if [ -f "${skill_dir}/${skill}/SKILL.md" ]; then
+          newly_installed=$((newly_installed + 1))
+        else
+          still_missing_skills+=("$skill")
+        fi
+      done
+
+      installed_count=$((installed_count + newly_installed))
+      if [ "${#still_missing_skills[@]}" -gt 0 ]; then
+        rm -f "$record_file" "$install_file" "$grouped_file"
+        die "${source} did not install requested skills: ${still_missing_skills[*]}"
+      fi
+    done < "$grouped_file"
+
+    if [ ! -s "$grouped_file" ]; then
+      echo "skip: ${target} (${skipped_count} already installed)"
+    fi
+
+    if [ "$DRY_RUN" -eq 1 ]; then
+      echo "summary: would install ${installed_count}, skipped ${skipped_count}"
+    else
+      echo "summary: installed ${installed_count}, skipped ${skipped_count}"
+    fi
+  done
+
+  rm -f "$record_file" "$install_file" "$grouped_file"
+}
+
 main() {
   local command="${1:-}"
   local profile
@@ -641,6 +995,16 @@ main() {
       shift
       parse_target_args required "$@"
       install_profile "$profile" "$TARGETS"
+      ;;
+    snapshot)
+      shift
+      parse_snapshot_args "$@"
+      write_snapshot "$SNAPSHOT_PATH" "$TARGETS"
+      ;;
+    apply)
+      shift
+      parse_apply_args "$@"
+      apply_snapshot "$SNAPSHOT_PATH" "$TARGETS"
       ;;
     update)
       shift

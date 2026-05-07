@@ -16,6 +16,7 @@
 - Vendor 和 package 名只出现在功能 profile 内部的 `source` 字段。
 - `all` 只用于 audit 和测试覆盖，不用于真实项目。
 - `skills-lock.json` 是 `npx skills` 生成物；git 忽略，SkillPack 安装判断也忽略它。
+- 项目 skill snapshot 放在 `.skillpack/` 下，只记录安装 metadata，不复制真实 skill 内容。
 
 ## 快速开始
 
@@ -29,9 +30,9 @@ npx github:YatMn/skillpack add web-app --target codex
 从任意目录安装到指定项目：
 
 ```bash
-skillpack init workflow --target codex --project /Users/yatmn/Projects/ByteX/Trendiq
-skillpack add web-app --target codex --project /Users/yatmn/Projects/ByteX/Trendiq
-skillpack add database --target codex --project /Users/yatmn/Projects/ByteX/Trendiq
+skillpack init workflow --target codex --project /path/to/project
+skillpack add web-app --target codex --project /path/to/project
+skillpack add database --target codex --project /path/to/project
 ```
 
 默认拒绝把 project skills 安装到 `skillpack` 仓库自己。只有明确测试时才传
@@ -117,17 +118,33 @@ summary: installed 3, skipped 14
 `npx skills add <source>`。因为 profile 没列 skill name，它不能逐个 skill 预先 skip
 或逐个验证。
 
-## 推荐安装矩阵
+## 项目 Skill Snapshot
 
-| 项目 | Profiles |
-| --- | --- |
-| `skillpack` | 默认不安装。只有显式测试才用 `--allow-self-install`。 |
-| `yatmn-skills` | `workflow` |
-| `Arcly` | `workflow` |
-| `Trendiq` | `workflow + web-app + database + deployment + research` |
-| `Codelet` | `workflow + web-app` |
-| `career-ops` | `workflow + web-app + research + writing` |
-| `x-crew` | `workflow` |
+保存当前项目已安装的 skills：
+
+```bash
+skillpack snapshot --target codex
+skillpack snapshot --target codex --output /path/to/skills.snapshot.yaml
+```
+
+默认写入：
+
+```text
+<project>/.skillpack/skills.snapshot.yaml
+```
+
+在另一个项目中还原：
+
+```bash
+skillpack apply /old/project/.skillpack/skills.snapshot.yaml --target codex --project /new/project
+```
+
+`snapshot` 会扫描目标 skill 目录，并从项目 `skills-lock.json` 解析每个 skill 的
+`source`。如果无法解析 source，命令会失败，不写入无法还原的 entry。
+
+`apply` 会读取 snapshot，跳过目标项目里已经存在的 skills，把缺失的 skills 按
+`source` 分组，然后委托 `npx skills` 安装。使用 `--dry-run` 可以只预览分组安装动作，
+不修改目标项目。
 
 ## 本地 CLI
 
@@ -151,22 +168,13 @@ skillpack list
 skillpack show workflow
 skillpack init workflow --target codex --project /path/to/project
 skillpack add web-app --target codex,cursor --project /path/to/project
+skillpack snapshot --target codex --project /path/to/project
+skillpack apply /path/to/project/.skillpack/skills.snapshot.yaml --target codex --project /path/to/other-project
 skillpack doctor --target codex --project /path/to/project
 skillpack coverage
 ```
 
 `restore` 只保留为 legacy `npx skills` passthrough。推荐重新运行需要的 profiles。
-
-## 重建策略
-
-本地重建时先备份，再移除生成物：
-
-```text
-~/.codex/skill-backups/YYYY-MM-DD-local-skill-reset/
-```
-
-先备份 `~/.codex/config.toml`、全局 loose skills、项目 `.agents/skills/` 和项目
-`skills-lock.json`。然后清理生成目录，再按安装矩阵重新安装。
 
 ## 验证
 
