@@ -1,0 +1,17 @@
+name: workflow
+title: Workflow
+summary: Plan, implement, review, publish, and maintain project work.
+
+includes: []
+
+skills:
+  - source: obra/superpowers
+    why: Planning, TDD, debugging, review, verification, and branch workflow.
+
+  - source: YatMn/yatmn-skills
+    why: Personal repo guidance, branch workflow, next prompt, and README helpers.
+    names:
+      - yatmn-agents-md
+      - yatmn-branch
+      - yatmn-next-prompt
+      - yatmn-readme

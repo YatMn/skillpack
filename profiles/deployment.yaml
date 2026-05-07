@@ -1,0 +1,22 @@
+name: deployment
+title: Deployment
+summary: Configure, deploy, inspect, and operate hosted web applications.
+
+includes: []
+
+skills:
+  - source: vercel/vercel-plugin
+    why: Configure, deploy, inspect, and operate Vercel applications.
+    names:
+      - bootstrap
+      - deployments-cicd
+      - env-vars
+      - marketplace
+      - routing-middleware
+      - runtime-cache
+      - vercel-agent
+      - vercel-cli
+      - vercel-functions
+      - vercel-sandbox
+      - verification
+      - workflow

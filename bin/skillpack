@@ -10,9 +10,9 @@ Usage:
   skillpack -<profile> --target <target[,target...]>
   skillpack init <profile> --target <target[,target...]>
   skillpack add <profile> --target <target[,target...]>
-  skillpack update
-  skillpack restore
-  skillpack doctor [--target <target[,target...]>]
+  skillpack update [--project <path>]
+  skillpack restore [--project <path>]
+  skillpack doctor [--target <target[,target...]>] [--project <path>]
   skillpack coverage
 
 Targets:
@@ -20,6 +20,11 @@ Targets:
   claude   Install project skills for Claude Code.
   cursor   Install project skills for Cursor.
   all      Install project skills for codex, claude, and cursor.
+
+Project options:
+  --project <path>        Install or inspect skills in this project. Defaults to
+                          the current working directory.
+  --allow-self-install    Allow installing project skills into the skillpack repo.
 EOF
 }
 
@@ -109,13 +114,18 @@ parse_profile_yaml() {
       if (source != "") {
         skills = trim(skills)
         if (skills == "") {
-          printf "E\tmissing skills for source %s\n", source
+          if (saw_names) {
+            printf "E\tmissing skills for source %s\n", source
+          } else {
+            printf "S\t%s\t*\n", source
+          }
         } else {
           printf "S\t%s\t%s\n", source, skills
         }
       }
       source = ""
       skills = ""
+      saw_names = 0
     }
 
     /^[[:space:]]*($|#)/ { next }
@@ -153,11 +163,13 @@ parse_profile_yaml() {
         printf "E\tmissing source\n"
       }
       in_names = 0
+      saw_names = 0
       next
     }
 
     section == "skills" && /^[[:space:]]*names:[[:space:]]*/ {
       in_names = 1
+      saw_names = 1
       next
     }
 
@@ -178,8 +190,8 @@ parse_profile_yaml() {
 }
 
 coverage() {
-  local pairs_file catalog_file duplicate_file source_file skill_file includes_file
-  local source_count skill_count pair_count catalog_count duplicate_count include_error_count
+  local pairs_file catalog_file duplicate_file source_file skill_file includes_file all_source_file
+  local source_count skill_count pair_count catalog_count duplicate_count include_error_count all_source_count
   local file profile record_type record_value source skills_part skill
 
   pairs_file="$(mktemp)"
@@ -188,6 +200,7 @@ coverage() {
   source_file="$(mktemp)"
   skill_file="$(mktemp)"
   includes_file="$(mktemp)"
+  all_source_file="$(mktemp)"
 
   for file in "${PROFILE_DIR}"/*.yaml; do
     [ -e "$file" ] || continue
@@ -204,6 +217,10 @@ coverage() {
           source="$record_value"
           [ -n "$source" ] || die "missing source in ${file}"
           [ -n "$skills_part" ] || die "missing skills in ${file}: ${source}"
+          if [ "$skills_part" = "*" ]; then
+            printf '%s\t%s\n' "$source" "$file" >> "$all_source_file"
+            continue
+          fi
           for skill in $skills_part; do
             [ -n "$skill" ] && printf '%s\t%s\t%s\n' "$source" "$skill" "$file" >> "$pairs_file"
           done
@@ -229,7 +246,7 @@ coverage() {
       }
     }
   ' "$pairs_file" | sort > "$duplicate_file"
-  awk -F '\t' '$1 !~ /^!/ { print $1 }' "$pairs_file" | sort -u > "$source_file"
+  { awk -F '\t' '$1 !~ /^!/ { print $1 }' "$pairs_file"; awk -F '\t' '$1 !~ /^!/ { print $1 }' "$all_source_file"; } | sort -u > "$source_file"
   awk -F '\t' '{ print $2 }' "$pairs_file" | sort -u > "$skill_file"
 
   source_count="$(wc -l < "$source_file" | tr -d ' ')"
@@ -238,11 +255,13 @@ coverage() {
   catalog_count="$(wc -l < "$catalog_file" | tr -d ' ')"
   duplicate_count="$(wc -l < "$duplicate_file" | tr -d ' ')"
   include_error_count="$(wc -l < "$includes_file" | tr -d ' ')"
+  all_source_count="$(wc -l < "$all_source_file" | tr -d ' ')"
 
   echo "installable sources: ${source_count}"
   echo "profile skills: ${skill_count}"
   echo "source/skill pairs: ${pair_count}"
   echo "catalog-only pairs: ${catalog_count}"
+  echo "all-source entries: ${all_source_count}"
   echo "overlap profile skills: ${duplicate_count}"
   echo "missing profile includes: ${include_error_count}"
 
@@ -264,7 +283,7 @@ coverage() {
     cat "$includes_file"
   fi
 
-  rm -f "$pairs_file" "$catalog_file" "$duplicate_file" "$source_file" "$skill_file" "$includes_file"
+  rm -f "$pairs_file" "$catalog_file" "$duplicate_file" "$source_file" "$skill_file" "$includes_file" "$all_source_file"
 
   [ "$catalog_count" -eq 0 ] && [ "$duplicate_count" -eq 0 ] && [ "$include_error_count" -eq 0 ]
 }
@@ -304,6 +323,8 @@ expand_profile() {
 
 TARGETS=""
 TARGETS_FROM_ALL=0
+PROJECT_DIR=""
+ALLOW_SELF_INSTALL=0
 
 target_required_message() {
   printf '%s\n' "target is required. Use --target codex,cursor,claude or --target all."
@@ -383,6 +404,8 @@ parse_target_args() {
 
   TARGETS=""
   TARGETS_FROM_ALL=0
+  PROJECT_DIR=""
+  ALLOW_SELF_INSTALL=0
 
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -394,6 +417,17 @@ parse_target_args() {
       --target=*)
         append_target_value "${1#--target=}"
         ;;
+      --project)
+        shift
+        [ "$#" -gt 0 ] || die "--project requires a value"
+        PROJECT_DIR="$1"
+        ;;
+      --project=*)
+        PROJECT_DIR="${1#--project=}"
+        ;;
+      --allow-self-install)
+        ALLOW_SELF_INSTALL=1
+        ;;
       *)
         die "unknown argument: $1"
         ;;
@@ -404,19 +438,37 @@ parse_target_args() {
   if [ -z "$TARGETS" ] && [ "$required" = "required" ]; then
     die "$(target_required_message)"
   fi
+
+  resolve_project_dir
+}
+
+resolve_project_dir() {
+  local project="${PROJECT_DIR:-.}"
+
+  [ -n "$project" ] || die "--project requires a non-empty path"
+  [ -d "$project" ] || die "project directory not found: ${project}"
+
+  PROJECT_DIR="$(cd -P "$project" && pwd)"
+}
+
+ensure_not_self_install() {
+  if [ "$ALLOW_SELF_INSTALL" -eq 0 ] && [ "$PROJECT_DIR" = "$ROOT_DIR" ]; then
+    die "refusing to install project skills into skillpack itself: ${PROJECT_DIR}. Pass --allow-self-install if this is intentional."
+  fi
 }
 
 install_profile() {
   local profile="$1"
   local targets="$2"
   local expanded line source skills_part install_file grouped_file
-  local target agent skill_dir
-  local -a skills
+  local target agent skill_dir installed_count skipped_count newly_installed before_count after_count
+  local -a skills missing_skills still_missing_skills
 
   if ! expanded="$(expand_profile "$profile")"; then
     return 1
   fi
   [ -n "$expanded" ] || die "profile has no install entries: ${profile}"
+  ensure_not_self_install
 
   install_file="$(mktemp)"
   grouped_file="$(mktemp)"
@@ -430,6 +482,10 @@ install_profile() {
     case "$source" in
       !*) continue ;;
     esac
+    if [ "$skills_part" = "*" ]; then
+      printf '%s\t*\n' "$source" >> "$install_file"
+      continue
+    fi
     for skill in "${skills[@]}"; do
       printf '%s\t%s\n' "$source" "$skill" >> "$install_file"
     done
@@ -437,11 +493,16 @@ install_profile() {
 
   awk -F '\t' '
     !seen_source[$1]++ { order[++count] = $1 }
+    $2 == "*" { all[$1] = 1; next }
     !seen_skill[$1 SUBSEP $2]++ { skills[$1] = skills[$1] " " $2 }
     END {
       for (i = 1; i <= count; i++) {
         source = order[i]
-        print source " |" skills[source]
+        if (all[source]) {
+          print source " | *"
+        } else {
+          print source " |" skills[source]
+        }
       }
     }
   ' "$install_file" > "$grouped_file"
@@ -457,16 +518,62 @@ install_profile() {
 
   for target in $targets; do
     agent="$(target_to_agent "$target")"
-    skill_dir="$(target_skill_dir "$target")"
+    skill_dir="${PROJECT_DIR}/$(target_skill_dir "$target")"
     mkdir -p "$skill_dir"
-    echo "Installing ${profile} for ${target}"
+    installed_count=0
+    skipped_count=0
+
+    echo "Installing ${profile} into ${skill_dir}"
 
     while IFS= read -r line || [ -n "$line" ]; do
       source="$(trim "${line%%|*}")"
       skills_part="$(trim "${line#*|}")"
       read -r -a skills <<< "$skills_part"
-      npx skills add "$source" --skill "${skills[@]}" --agent "$agent" -y </dev/null
+      if [ "$skills_part" = "*" ]; then
+        before_count="$(find "$skill_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
+        echo "add: ${source} (all skills)"
+        (cd "$PROJECT_DIR" && npx skills add "$source" --agent "$agent" -y </dev/null)
+        after_count="$(find "$skill_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
+        if [ "$after_count" -gt "$before_count" ]; then
+          installed_count=$((installed_count + after_count - before_count))
+        fi
+        continue
+      fi
+      missing_skills=()
+
+      for skill in "${skills[@]}"; do
+        if [ -f "${skill_dir}/${skill}/SKILL.md" ]; then
+          skipped_count=$((skipped_count + 1))
+        else
+          missing_skills+=("$skill")
+        fi
+      done
+
+      if [ "${#missing_skills[@]}" -eq 0 ]; then
+        echo "skip: ${source} (${#skills[@]} already installed)"
+        continue
+      fi
+
+      echo "add: ${source} (${#missing_skills[@]} missing, ${#skills[@]} total)"
+      (cd "$PROJECT_DIR" && npx skills add "$source" --skill "${missing_skills[@]}" --agent "$agent" -y </dev/null)
+
+      newly_installed=0
+      still_missing_skills=()
+      for skill in "${missing_skills[@]}"; do
+        if [ -f "${skill_dir}/${skill}/SKILL.md" ]; then
+          newly_installed=$((newly_installed + 1))
+        else
+          still_missing_skills+=("$skill")
+        fi
+      done
+
+      installed_count=$((installed_count + newly_installed))
+      if [ "${#still_missing_skills[@]}" -gt 0 ]; then
+        die "${source} did not install requested skills: ${still_missing_skills[*]}"
+      fi
     done < "$grouped_file"
+
+    echo "summary: installed ${installed_count}, skipped ${skipped_count}"
   done
 
   rm -f "$install_file" "$grouped_file"
@@ -491,15 +598,15 @@ doctor() {
     failed=1
   fi
 
-  if [ -w . ]; then
-    echo "ok: current directory is writable"
+  if [ -w "$PROJECT_DIR" ]; then
+    echo "ok: project directory is writable: ${PROJECT_DIR}"
   else
-    echo "fail: current directory is not writable"
+    echo "fail: project directory is not writable: ${PROJECT_DIR}"
     failed=1
   fi
 
   for target in $targets; do
-    skill_dir="$(target_skill_dir "$target")"
+    skill_dir="${PROJECT_DIR}/$(target_skill_dir "$target")"
     if [ -d "$skill_dir" ]; then
       echo "ok: ${skill_dir} exists"
     else
@@ -507,11 +614,7 @@ doctor() {
     fi
   done
 
-  if [ -f skills-lock.json ]; then
-    echo "ok: skills-lock.json exists"
-  else
-    echo "warn: skills-lock.json missing"
-  fi
+  echo "info: skills-lock.json is ignored by skillpack and is not required"
 
   return "$failed"
 }
@@ -541,13 +644,14 @@ main() {
       ;;
     update)
       shift
-      [ "$#" -eq 0 ] || die "update does not accept arguments"
-      npx skills update -p -y
+      parse_target_args optional "$@"
+      (cd "$PROJECT_DIR" && npx skills update -p -y)
       ;;
     restore)
       shift
-      [ "$#" -eq 0 ] || die "restore does not accept arguments"
-      npx skills experimental_install
+      parse_target_args optional "$@"
+      echo "warn: restore is legacy. Prefer rerunning skillpack init/add with the desired profiles."
+      (cd "$PROJECT_DIR" && npx skills experimental_install)
       ;;
     doctor)
       shift

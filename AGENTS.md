@@ -12,7 +12,7 @@ installation to `npx skills` in the current project.
 
 - [README.md](README.md): user-facing install, usage, profiles, and boundaries.
 - [bin/skillpack](bin/skillpack): CLI behavior and argument handling.
-- [profiles/](profiles/): installable profile definitions.
+- [profiles/](profiles/): one-layer functional profile definitions.
 - If docs and code disagree, verify against `bin/skillpack` and update the docs.
 
 ## Working Rules
@@ -23,12 +23,19 @@ installation to `npx skills` in the current project.
 - Do not add global skill installation behavior. Profile commands should install
   into the caller's current project through `npx skills`.
 - Keep profile files as simple YAML: `includes` lists and `skills` entries with
-  `source`, `why`, and one skill name per line under `names`.
+  `source`, `why`, and optional `names`.
+- If `names` is omitted for a `source`, SkillPack installs all skills from that
+  source by calling `npx skills add <source>`.
+- If `names` is present, put one skill name per line and SkillPack installs only
+  those skills.
 - Install/add commands must use explicit `--target`; do not restore a default
   agent or the old `--agent` CLI contract.
 - Supported targets are `codex`, `claude`, `cursor`, and `all`. Target-specific
   project skill directories are `.agents/skills`, `.claude/skills`, and
   `.cursor/skills`.
+- Profile IDs are one-layer use cases such as `workflow`, `web-app`,
+  `writing`, and `research`; do not create vendor/source profiles such as
+  `openai`, `anthropic`, `vercel`, or `supabase`.
 - Treat `profiles/all.yaml` as an aggregate profile; avoid adding skill entries
   there when a scenario-specific profile is the right home.
 - Use Bash-compatible changes in `install.sh` and `bin/skillpack`; this repo
@@ -38,8 +45,8 @@ installation to `npx skills` in the current project.
 
 - Install local CLI symlink: `./install.sh`
 - List profiles: `./bin/skillpack list`
-- Show expanded profile: `./bin/skillpack show dev`
-- Install profile into current project: `./bin/skillpack init dev --target codex`
+- Show expanded profile: `./bin/skillpack show workflow`
+- Install profile into current project: `./bin/skillpack init workflow --target codex`
 - Add another profile into current project: `./bin/skillpack add writing --target codex,cursor`
 - Update project skills: `./bin/skillpack update`
 - Restore project skills from lock/state: `./bin/skillpack restore`
@@ -60,6 +67,6 @@ installation to `npx skills` in the current project.
 ## Repository Layout
 
 - `bin/skillpack`: Bash CLI implementation.
-- `profiles/*.yaml`: scenario profiles and profile includes.
+- `profiles/*.yaml`: one-layer functional profile definitions and includes.
 - `install.sh`: installs `~/.local/bin/skillpack` as a symlink to this repo.
 - `README.md`: public usage guide.

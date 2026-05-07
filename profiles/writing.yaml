@@ -1,12 +1,30 @@
 name: writing
 title: Writing
-summary: Write, edit, proofread, and produce creator content.
+summary: Write, edit, document, proofread, and produce office content.
 
 includes: []
 
 skills:
+  - source: anthropics/skills
+    why: Writing collaboration, internal communication, documents, spreadsheets, slides, and PDFs.
+    names:
+      - doc-coauthoring
+      - docx
+      - internal-comms
+      - pdf
+      - pptx
+      - xlsx
+
+  - source: openai/skills
+    why: Capture decisions, turn specs into plans, research Notion, and prepare meetings.
+    names:
+      - notion-knowledge-capture
+      - notion-meeting-intelligence
+      - notion-research-documentation
+      - notion-spec-to-implementation
+
   - source: alchaincyf/huashu-skills
-    why: Creator writing, scripts, social posts, proofreading, and article images.
+    why: Creator writing, scripts, social posts, proofreading, article images, PDFs, data, and slides.
     names:
       - huashu-agent-swarm
       - huashu-article-edit
@@ -22,9 +40,9 @@ skills:
       - huashu-image-upload
       - huashu-wechat-image
       - huashu-xhs-image
-
-  - source: anthropics/skills
-    why: Collaborative writing and internal communication.
-    names:
-      - doc-coauthoring
-      - internal-comms
+      - huashu-research
+      - huashu-info-search
+      - huashu-material-search
+      - huashu-md-to-pdf
+      - huashu-data-pro
+      - huashu-slides

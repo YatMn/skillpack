@@ -1,12 +1,12 @@
 name: design
 title: Design
-summary: Create visual design, static assets, UI direction, and motion.
+summary: Create visual design, static assets, UI direction, and generated images.
 
 includes: []
 
 skills:
   - source: anthropics/skills
-    why: Visual asset creation, theme work, and interactive artifacts.
+    why: Brand, static visual design, generated themes, and interactive artifacts.
     names:
       - algorithmic-art
       - brand-guidelines
@@ -17,10 +17,3 @@ skills:
 
   - source: alchaincyf/huashu-design
     why: Huashu design prototypes, demos, slides, and design variants.
-    names:
-      - huashu-design
-
-  - source: openai/skills
-    why: Bitmap image generation and editing.
-    names:
-      - imagegen

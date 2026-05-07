@@ -1,0 +1,12 @@
+name: web-app
+title: Web App
+summary: Build and test frontend, React, Next.js, and application UI work.
+
+includes: []
+
+skills:
+  - source: anthropics/skills
+    why: Frontend design and browser-based web app testing.
+    names:
+      - frontend-design
+      - webapp-testing

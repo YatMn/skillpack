@@ -9,15 +9,3 @@ skills:
     why: Read and extract rendered web pages with Chrome.
     names:
       - dokobot
-
-  - source: alchaincyf/huashu-skills
-    why: Structured research, information search, and personal material search.
-    names:
-      - huashu-research
-      - huashu-info-search
-      - huashu-material-search
-
-  - source: openai/skills
-    why: Research across Notion and synthesize documentation.
-    names:
-      - notion-research-documentation

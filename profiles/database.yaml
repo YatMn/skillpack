@@ -1,0 +1,9 @@
+name: database
+title: Database
+summary: Work with Supabase, Postgres, and storage.
+
+includes: []
+
+skills:
+  - source: supabase/agent-skills
+    why: Supabase project guidance and Postgres best practices.
