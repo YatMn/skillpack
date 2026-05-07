@@ -1,17 +1,18 @@
 {
-  "name": "@yatmn/skillpack",
+  "name": "@yatmn/skillsman",
   "version": "0.1.0",
-  "description": "Project-level skill profile initializer for Codex, Claude Code, and Cursor.",
+  "description": "Personal agent skills manager for bundled skills and project profiles.",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
   },
   "bin": {
-    "skillpack": "bin/skillpack"
+    "skillsman": "bin/skillsman"
   },
   "files": [
     "bin/",
     "profiles/",
+    "skills/",
     "README.md",
     "README.zh-CN.md",
     "LICENSE"

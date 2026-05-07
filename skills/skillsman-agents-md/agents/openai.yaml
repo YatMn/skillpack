@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skillsman AGENTS.md"
+  short_description: "Create concise agent instruction files"
+  default_prompt: "Use $skillsman-agents-md to draft or improve this repository's AGENTS.md."

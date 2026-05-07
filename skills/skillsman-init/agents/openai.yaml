@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skillsman Init"
+  short_description: "Initialize project skills with Skillsman"
+  default_prompt: "Use $skillsman-init to initialize project skills for this repository with Skillsman."

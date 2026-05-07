@@ -3,9 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BIN_DIR="${HOME}/.local/bin"
-TARGET="${BIN_DIR}/skillpack"
+TARGET="${BIN_DIR}/skillsman"
 
 mkdir -p "$BIN_DIR"
-ln -sfn "${ROOT_DIR}/bin/skillpack" "$TARGET"
+ln -sfn "${ROOT_DIR}/bin/skillsman" "$TARGET"
 
-echo "Installed skillpack at ${TARGET}"
+echo "Installed skillsman at ${TARGET}"

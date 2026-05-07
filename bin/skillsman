@@ -4,18 +4,18 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  skillpack list
-  skillpack show <profile>
-  skillpack <profile> --target <target[,target...]>
-  skillpack -<profile> --target <target[,target...]>
-  skillpack init <profile> --target <target[,target...]>
-  skillpack add <profile> --target <target[,target...]>
-  skillpack snapshot --target <target[,target...]> [--project <path>] [--output <path>]
-  skillpack apply [snapshot-path] --target <target[,target...]> [--project <path>] [--dry-run]
-  skillpack update [--project <path>]
-  skillpack restore [--project <path>]
-  skillpack doctor [--target <target[,target...]>] [--project <path>]
-  skillpack coverage
+  skillsman list
+  skillsman show <profile>
+  skillsman <profile> --target <target[,target...]>
+  skillsman -<profile> --target <target[,target...]>
+  skillsman init <profile> --target <target[,target...]>
+  skillsman add <profile> --target <target[,target...]>
+  skillsman snapshot --target <target[,target...]> [--project <path>] [--output <path>]
+  skillsman apply [snapshot-path] --target <target[,target...]> [--project <path>] [--dry-run]
+  skillsman update [--project <path>]
+  skillsman restore [--project <path>]
+  skillsman doctor [--target <target[,target...]>] [--project <path>]
+  skillsman coverage
 
 Targets:
   codex    Install project skills for Codex.
@@ -26,12 +26,12 @@ Targets:
 Project options:
   --project <path>        Install or inspect skills in this project. Defaults to
                           the current working directory.
-  --allow-self-install    Allow installing project skills into the skillpack repo.
+  --allow-self-install    Allow installing project skills into the skillsman repo.
 EOF
 }
 
 die() {
-  echo "skillpack: $*" >&2
+  echo "skillsman: $*" >&2
   exit 1
 }
 
@@ -553,7 +553,7 @@ resolve_snapshot_path() {
   local mode="$1"
 
   if [ -z "$SNAPSHOT_PATH" ]; then
-    SNAPSHOT_PATH="${PROJECT_DIR}/.skillpack/skills.snapshot.yaml"
+    SNAPSHOT_PATH="${PROJECT_DIR}/.skillsman/skills.snapshot.yaml"
     return
   fi
 
@@ -569,7 +569,7 @@ resolve_snapshot_path() {
 
 ensure_not_self_install() {
   if [ "$ALLOW_SELF_INSTALL" -eq 0 ] && [ "$PROJECT_DIR" = "$ROOT_DIR" ]; then
-    die "refusing to install project skills into skillpack itself: ${PROJECT_DIR}. Pass --allow-self-install if this is intentional."
+    die "refusing to install project skills into skillsman itself: ${PROJECT_DIR}. Pass --allow-self-install if this is intentional."
   fi
 }
 
@@ -730,7 +730,7 @@ doctor() {
     fi
   done
 
-  echo "info: skills-lock.json is ignored by skillpack and is not required"
+  echo "info: skills-lock.json is ignored by skillsman and is not required"
 
   return "$failed"
 }
@@ -766,7 +766,7 @@ write_snapshot() {
   snapshot_tmp="$(mktemp)"
 
   {
-    echo "schema: skillpack.snapshot.v1"
+    echo "schema: skillsman.snapshot.v1"
     echo "targets:"
 
     for target in $targets; do
@@ -792,9 +792,9 @@ write_snapshot() {
   } > "$snapshot_tmp"
 
   if [ -s "$missing_file" ]; then
-    echo "skillpack: snapshot cannot resolve source for installed skills:" >&2
+    echo "skillsman: snapshot cannot resolve source for installed skills:" >&2
     sed 's/^/  - /' "$missing_file" >&2
-    echo "skillpack: ensure skills-lock.json has matching source metadata" >&2
+    echo "skillsman: ensure skills-lock.json has matching source metadata" >&2
     rm -f "$missing_file" "$snapshot_tmp"
     exit 1
   fi
@@ -819,7 +819,7 @@ parse_snapshot_yaml() {
     /^schema:[[:space:]]*/ {
       schema = $0
       sub(/^schema:[[:space:]]*/, "", schema)
-      if (schema != "skillpack.snapshot.v1") {
+      if (schema != "skillsman.snapshot.v1") {
         printf "E\tunsupported snapshot schema: %s\n", schema
       }
       next
@@ -1014,7 +1014,7 @@ main() {
     restore)
       shift
       parse_target_args optional "$@"
-      echo "warn: restore is legacy. Prefer rerunning skillpack init/add with the desired profiles."
+      echo "warn: restore is legacy. Prefer rerunning skillsman init/add with the desired profiles."
       (cd "$PROJECT_DIR" && npx skills experimental_install)
       ;;
     doctor)

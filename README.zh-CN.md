@@ -1,46 +1,133 @@
-# skillpack
+# skillsman
 
 [English](README.md) | 简体中文
 
-面向 Codex、Claude Code 和 Cursor 的项目级 skill profile 安装器。
+Skillsman 用来管理可复用的 agent skills 和项目级 skill profiles，适用于
+Codex、Claude Code、Cursor，以及其他通过 `npx skills` 安装 skills 的环境。
 
-`skillpack` 只是 initializer。它把一层使用场景 profile 放在 `profiles/*.yaml`，然后在目标项目里
-委托 `npx skills` 完成真实安装。它不保存真实 skill 内容，不安装全局 skills，也不把
-`skills-lock.json` 当成 source of truth。
+这个仓库包含可安装的 `skillsman-*` skills、按场景划分的 profiles，以及一个 Bash
+CLI。CLI 会展开选中的 profile，检查目标项目，然后把安装动作交给 `npx skills` 执行。
 
-## 治理模型
+维护者：YatMn <yatmn@outlook.com>
 
-- SkillPack 是本地项目 skills 的唯一分发入口。
-- Codex 插件只保留工具能力，不作为 skill 分发来源。
-- Profile 按使用场景命名，不按 vendor 或 skill source 命名。
-- Vendor 和 package 名只出现在功能 profile 内部的 `source` 字段。
-- `all` 只用于 audit 和测试覆盖，不用于真实项目。
-- `skills-lock.json` 是 `npx skills` 生成物；git 忽略，SkillPack 安装判断也忽略它。
-- 项目 skill snapshot 放在 `.skillpack/` 下，只记录安装 metadata，不复制真实 skill 内容。
+## 功能
+
+- 在 `skills/` 下保存第一方 agent skills。
+- 在 `profiles/` 下定义安装 profiles。
+- 把 skills 安装到项目本地的 agent 目录。
+- 支持 Codex、Claude Code 和 Cursor targets。
+- 支持记录和应用项目 skills snapshot。
+
+Skillsman 不安装全局 skills。安装命令会写入指定项目，并且默认拒绝把 skills
+安装进本仓库；只有显式传 `--allow-self-install` 才允许。
 
 ## 快速开始
 
-安装到当前项目：
+在当前项目安装一个 profile：
 
 ```bash
-npx github:YatMn/skillpack init workflow --target codex
-npx github:YatMn/skillpack add web-app --target codex
+npx github:YatMn/skillsman init workflow --target codex
+npx github:YatMn/skillsman add web-app --target codex
 ```
 
-从任意目录安装到指定项目：
+把 profiles 安装到其他项目：
 
 ```bash
-skillpack init workflow --target codex --project /path/to/project
-skillpack add web-app --target codex --project /path/to/project
-skillpack add database --target codex --project /path/to/project
+npx github:YatMn/skillsman init workflow --target codex --project /path/to/project
+npx github:YatMn/skillsman add database --target codex --project /path/to/project
 ```
 
-默认拒绝把 project skills 安装到 `skillpack` 仓库自己。只有明确测试时才传
-`--allow-self-install`。
+使用本地 checkout：
+
+```bash
+./bin/skillsman list
+./bin/skillsman show workflow
+./bin/skillsman init workflow --target codex --project /path/to/project
+```
+
+直接安装一个内置 skill：
+
+```bash
+npx skills add YatMn/skillsman --skill skillsman-readme --agent codex
+```
+
+## 推荐用法
+
+新项目可以先只安装 bootstrap skill：
+
+```bash
+npx skills add YatMn/skillsman --skill skillsman-init --agent codex
+```
+
+然后把目标 agent 和项目类型一起告诉 Codex：
+
+```text
+Use $skillsman-init to initialize project skills for this repository.
+
+Target: codex
+Project type: web app
+Project path: current repository
+
+Inspect the project briefly, recommend the matching Skillsman profiles, show the
+install plan, and wait for confirmation before installing.
+```
+
+如果要安装给其他 agent，把 `Target` 改成 `claude`、`cursor`，或
+`codex,cursor` 这样的逗号列表。`Project type` 按项目实际情况填写，例如
+`backend service`、`full-stack app`、`research project`、`writing project` 或
+`design project`。
+
+`skillsman-init` 会根据这些信息推荐合适的 Skillsman profiles，展示安装计划，等待确认，
+然后执行 `skillsman init` 或 `skillsman add` 安装后续 skills。
+
+## 内置 Skills
+
+| Skill | 用途 |
+| --- | --- |
+| `skillsman-agents-md` | 创建或改进仓库级 agent instruction 文件，例如 `AGENTS.md`。 |
+| `skillsman-branch` | 按 main/develop/release 模型创建、检查、同步和治理 Git/GitHub branches。 |
+| `skillsman-init` | 选择 Skillsman profiles，展示安装计划，确认后执行安装。 |
+| `skillsman-next-prompt` | 为 Codex 创建简洁的 continuation、handoff 或 fresh-session prompt。 |
+| `skillsman-readme` | 创建或更新实用的软件仓库 README 文档。 |
+
+每个内置 skill 位于 `skills/<skill-name>/`。目录名、`SKILL.md` frontmatter
+里的 `name`，以及 `agents/openai.yaml` metadata 应保持一致。
+
+## Profiles
+
+| Profile | 使用场景 |
+| --- | --- |
+| `workflow` | Planning、branching、review、publish、README 和 repository workflow skills。 |
+| `web-app` | Frontend、React、Next.js、UI 和 browser app testing。 |
+| `deployment` | Hosted web app deployment、env vars、functions、runtime 和 verification。 |
+| `database` | Supabase、Postgres 和 storage。 |
+| `research` | Web research 和 knowledge extraction。 |
+| `writing` | Writing、docs、editing、office files、scripts、meetings、data 和 slides。 |
+| `design` | Visual design、brand assets、themes、artifacts 和 generated images。 |
+| `all` | 只用于 audit/test aggregate。不要用于真实项目。 |
+
+安装前可以先预览 profile：
+
+```bash
+skillsman show workflow
+skillsman show web-app
+```
+
+Profile 文件是简单 YAML：
+
+```yaml
+skills:
+  - source: YatMn/skillsman
+    why: Repository guidance, branch workflow, next prompt, and README helpers.
+    names:
+      - skillsman-branch
+      - skillsman-readme
+```
+
+如果省略 `names`，Skillsman 会用 `npx skills add <source>` 安装该 source
+里的全部 skills。如果写了 `names`，则只安装列出的 skills。
 
 ## Targets
-
-安装命令必须显式传 `--target`。支持 `codex`、`claude`、`cursor` 和 `all`。
 
 | Target | 项目 skills 目录 |
 | --- | --- |
@@ -49,140 +136,88 @@ skillpack add database --target codex --project /path/to/project
 | `cursor` | `.cursor/skills` |
 | `all` | 同时安装 `codex`、`claude` 和 `cursor`。 |
 
-## Profiles
-
-| Profile | 用途 |
-| --- | --- |
-| `workflow` | 规划、分支、review、CI 修复、README 和发布流程。 |
-| `web-app` | Frontend、React、Next.js、UI 和浏览器应用测试。 |
-| `deployment` | 托管 Web app 部署、env vars、functions、runtime 和验证。 |
-| `database` | Supabase、Postgres 和数据库存储。 |
-| `research` | 网络调研和知识提取。 |
-| `writing` | 写作、文档、编辑、office 文件、脚本、会议、数据和 slides。 |
-| `design` | 视觉设计、品牌资产、themes、artifacts 和 image generation。 |
-| `all` | 仅 audit/test 聚合。 |
-
-查看展开后的安装计划：
-
-```bash
-skillpack show workflow
-skillpack show web-app
-skillpack show deployment
-```
-
-## Profile 条目
-
-每个 `skills` entry 必须有 `source` 和 `why`。`names` 可以省略：
-
-```yaml
-skills:
-  - source: obra/superpowers
-    why: Planning, TDD, debugging, review, verification, and branch workflow.
-```
-
-省略 `names` 表示安装这个 source 下全部 skills，对应调用：
-
-```bash
-npx skills add <source>
-```
-
-只有需要安装子集时才写 `names`：
-
-```yaml
-skills:
-  - source: vercel/vercel-plugin
-    why: Build React and Next.js apps with common UI and build tooling.
-    names:
-      - nextjs
-      - react-best-practices
-```
-
-## 幂等安装
-
-对每个 target，SkillPack 检查：
-
-```text
-<project>/<target-skill-dir>/<skill>/SKILL.md
-```
-
-已经存在的 skill 会 skip；缺失的 skill 会按 source 分组，每个 source 调一次
-`npx skills add`。输出会包含：
-
-```text
-summary: installed 3, skipped 14
-```
-
-这个判断不依赖 `skills-lock.json`。
-
-对于省略 `names` 的 entry，SkillPack 会把整个 source 交给
-`npx skills add <source>`。因为 profile 没列 skill name，它不能逐个 skill 预先 skip
-或逐个验证。
-
-## 项目 Skill Snapshot
-
-保存当前项目已安装的 skills：
-
-```bash
-skillpack snapshot --target codex
-skillpack snapshot --target codex --output /path/to/skills.snapshot.yaml
-```
-
-默认写入：
-
-```text
-<project>/.skillpack/skills.snapshot.yaml
-```
-
-在另一个项目中还原：
-
-```bash
-skillpack apply /old/project/.skillpack/skills.snapshot.yaml --target codex --project /new/project
-```
-
-`snapshot` 会扫描目标 skill 目录，并从项目 `skills-lock.json` 解析每个 skill 的
-`source`。如果无法解析 source，命令会失败，不写入无法还原的 entry。
-
-`apply` 会读取 snapshot，跳过目标项目里已经存在的 skills，把缺失的 skills 按
-`source` 分组，然后委托 `npx skills` 安装。使用 `--dry-run` 可以只预览分组安装动作，
-不修改目标项目。
-
-## 本地 CLI
-
-```bash
-git clone https://github.com/YatMn/skillpack.git
-cd skillpack
-./install.sh
-```
-
-然后在任意项目运行：
-
-```bash
-skillpack init workflow --target codex
-skillpack add web-app --target codex,cursor
-```
+安装命令必须传 `--target`。可以使用逗号分隔的列表，例如
+`--target codex,cursor`，也可以使用 `--target all`。
 
 ## 命令
 
 ```bash
-skillpack list
-skillpack show workflow
-skillpack init workflow --target codex --project /path/to/project
-skillpack add web-app --target codex,cursor --project /path/to/project
-skillpack snapshot --target codex --project /path/to/project
-skillpack apply /path/to/project/.skillpack/skills.snapshot.yaml --target codex --project /path/to/other-project
-skillpack doctor --target codex --project /path/to/project
-skillpack coverage
+skillsman list
+skillsman show workflow
+skillsman init workflow --target codex
+skillsman add writing --target codex,cursor
+skillsman snapshot --target codex
+skillsman apply .skillsman/skills.snapshot.yaml --target codex --project /path/to/project
+skillsman update --project /path/to/project
+skillsman restore --project /path/to/project
+skillsman doctor --target codex
+skillsman coverage
 ```
 
-`restore` 只保留为 legacy `npx skills` passthrough。推荐重新运行需要的 profiles。
+`init`、`add` 和 profile shorthand 命令会跳过目标目录里已经有 `SKILL.md` 的
+skills。缺失的 skills 会按 source 合并，再通过 `npx skills add` 安装。
 
-## 验证
+`update` 会转交给 `npx skills update -p -y`。`restore` 是
+`npx skills experimental_install` 的 legacy passthrough；可重复执行的安装路径是重新运行
+对应的 profile install。
+
+## Snapshots
+
+保存项目已安装的 skills：
 
 ```bash
-bash -n install.sh bin/skillpack
-./bin/skillpack list
-./bin/skillpack show workflow
-./bin/skillpack show web-app
-./bin/skillpack show deployment
-./bin/skillpack coverage
+skillsman snapshot --target codex
+skillsman snapshot --target codex --output /path/to/skills.snapshot.yaml
 ```
+
+默认 snapshot 路径：
+
+```text
+<project>/.skillsman/skills.snapshot.yaml
+```
+
+应用 snapshot：
+
+```bash
+skillsman apply /old/project/.skillsman/skills.snapshot.yaml --target codex --project /new/project
+skillsman apply /old/project/.skillsman/skills.snapshot.yaml --target codex --project /new/project --dry-run
+```
+
+Snapshot 使用 `skillsman.snapshot.v1` schema。`snapshot` 会扫描已安装的
+`SKILL.md`，并从 `skills-lock.json` 解析每个 skill 的 source。如果无法解析
+source，命令会失败，不会写出不完整的 snapshot。
+
+## 开发
+
+安装本地 CLI symlink：
+
+```bash
+./install.sh
+```
+
+运行本地检查：
+
+```bash
+bash -n install.sh bin/skillsman
+./bin/skillsman list
+./bin/skillsman show workflow
+./bin/skillsman coverage
+git diff --check
+npm pack --dry-run
+```
+
+## 仓库结构
+
+```text
+bin/skillsman
+profiles/*.yaml
+skills/*/SKILL.md
+skills/*/agents/openai.yaml
+skills/*/references/
+install.sh
+package.json
+```
+
+## License
+
+MIT License. See [LICENSE](LICENSE).

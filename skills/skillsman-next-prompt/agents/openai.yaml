@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skillsman Next Prompt"
+  short_description: "Create context-aware next prompts"
+  default_prompt: "Use $skillsman-next-prompt to create the next best prompt for Codex based on the current context."

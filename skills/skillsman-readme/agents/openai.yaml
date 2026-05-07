@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skillsman README"
+  short_description: "Draft bilingual project README files"
+  default_prompt: "Use $skillsman-readme to inspect this repository and create or update an English-first README.md with a linked Chinese README.zh-CN.md."
