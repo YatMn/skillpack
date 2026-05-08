@@ -1,6 +1,6 @@
 # skillsman
 
-[![skills.sh](https://img.shields.io/badge/skills.sh-available-111111.svg)](https://skills.sh/yatmn/skillsman)
+[![skills.sh](https://skills.sh/b/yatmn/skillsman)](https://skills.sh/yatmn/skillsman)
 
 English | [简体中文](README.zh-CN.md)
 
