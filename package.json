@@ -1,7 +1,7 @@
 {
   "name": "@yatmn/skillsman",
   "version": "0.1.0",
-  "description": "Personal agent skills manager for bundled skills and project profiles.",
+  "description": "Personal agent skills manager for bundled skills and project scenarios.",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -11,7 +11,7 @@
   },
   "files": [
     "bin/",
-    "profiles/",
+    "scenarios/",
     "skills/",
     "README.md",
     "README.zh-CN.md",

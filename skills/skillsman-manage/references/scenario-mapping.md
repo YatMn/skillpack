@@ -1,10 +1,10 @@
-# Skillsman Profile Mapping
+# Skillsman Scenario Mapping
 
-Use this reference to map a user-described project type to Skillsman profiles.
+Use this reference to map a user-described project type to Skillsman scenarios.
 
 ## Mappings
 
-| Project type | Profiles | Notes |
+| Project type | Scenarios | Notes |
 | --- | --- | --- |
 | Development management | `workflow` | Planning, branching, review, README, verification, and project workflow management. |
 | Backend development | `workflow` | Server/API work gets development workflow support. Add `database` or `deployment` only when the request names those responsibilities. |
@@ -18,9 +18,9 @@ Use this reference to map a user-described project type to Skillsman profiles.
 
 ## Selection Rules
 
-- Prefer the narrowest profile set that covers the user request.
-- Include `workflow` when the request involves planning, branching, review, README, verification, or general development management. Otherwise keep the mapped profile set narrow.
-- Do not use `all` as a project type mapping. The Skillsman `all` profile is for audit and test coverage only.
+- Prefer the narrowest scenario set that covers the user request.
+- Include `workflow` when the request involves planning, branching, review, README, verification, or general development management. Otherwise keep the mapped scenario set narrow.
+- Do not use `all` as a project type mapping. The Skillsman `all` scenario is for audit and test coverage only.
 - If the user describes a stack rather than a project type, infer the project type conservatively:
   - API server, service, worker, CLI backend: backend development.
   - React, Next.js, browser UI, dashboard: frontend or web app.

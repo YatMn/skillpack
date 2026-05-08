@@ -5,11 +5,13 @@ usage() {
   cat <<'EOF'
 Usage:
   skillsman list
-  skillsman show <profile>
-  skillsman <profile> --target <target[,target...]>
-  skillsman -<profile> --target <target[,target...]>
-  skillsman init <profile> --target <target[,target...]>
-  skillsman add <profile> --target <target[,target...]>
+  skillsman show <scenario>
+  skillsman status [--target <target[,target...]>] [--project <path>]
+  skillsman <scenario> --target <target[,target...]>
+  skillsman -<scenario> --target <target[,target...]>
+  skillsman init <scenario> --target <target[,target...]>
+  skillsman add <scenario> --target <target[,target...]>
+  skillsman remove <skill...> --target <target[,target...]>
   skillsman snapshot --target <target[,target...]> [--project <path>] [--output <path>]
   skillsman apply [snapshot-path] --target <target[,target...]> [--project <path>] [--dry-run]
   skillsman update [--project <path>]
@@ -18,10 +20,16 @@ Usage:
   skillsman coverage
 
 Targets:
-  codex    Install project skills for Codex.
-  claude   Install project skills for Claude Code.
-  cursor   Install project skills for Cursor.
-  all      Install project skills for codex, claude, and cursor.
+  codex       Install project skills for Codex.
+  claude      Alias for claude-code.
+  claude-code Install project skills for Claude Code.
+  cursor      Install project skills for Cursor.
+  gemini      Alias for gemini-cli.
+  openclaw    Install project skills for OpenClaw.
+  antigravity Install project skills for Antigravity.
+  all         Pass --agent '*' to npx skills.
+
+  Other target names are passed through to npx skills --agent unchanged.
 
 Project options:
   --project <path>        Install or inspect skills in this project. Defaults to
@@ -60,43 +68,43 @@ trim() {
 
 SCRIPT_DIR="$(resolve_script_path)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-PROFILE_DIR="${ROOT_DIR}/profiles"
+SCENARIO_DIR="${ROOT_DIR}/scenarios"
 INVOCATION_DIR="$(pwd)"
 
-profile_path() {
-  local profile="$1"
+scenario_path() {
+  local scenario="$1"
 
-  case "$profile" in
-    ""|*/*|*..*) die "invalid profile name: ${profile}" ;;
+  case "$scenario" in
+    ""|*/*|*..*) die "invalid scenario name: ${scenario}" ;;
   esac
 
-  printf '%s/%s.yaml' "$PROFILE_DIR" "$profile"
+  printf '%s/%s.yaml' "$SCENARIO_DIR" "$scenario"
 }
 
-require_profile() {
-  local profile="$1"
+require_scenario() {
+  local scenario="$1"
   local path
-  if ! path="$(profile_path "$profile")"; then
+  if ! path="$(scenario_path "$scenario")"; then
     return 1
   fi
 
-  [ -f "$path" ] || die "profile not found: ${profile}"
+  [ -f "$path" ] || die "scenario not found: ${scenario}"
   printf '%s' "$path"
 }
 
-list_profiles() {
+list_scenarios() {
   local file name
 
-  [ -d "$PROFILE_DIR" ] || die "profile directory not found: ${PROFILE_DIR}"
+  [ -d "$SCENARIO_DIR" ] || die "scenario directory not found: ${SCENARIO_DIR}"
 
-  for file in "${PROFILE_DIR}"/*.yaml; do
+  for file in "${SCENARIO_DIR}"/*.yaml; do
     [ -e "$file" ] || continue
     name="$(basename "$file" .yaml)"
     printf '%s\n' "$name"
   done
 }
 
-parse_profile_yaml() {
+parse_scenario_yaml() {
   local path="$1"
 
   awk '
@@ -195,7 +203,7 @@ parse_profile_yaml() {
 coverage() {
   local pairs_file catalog_file duplicate_file source_file skill_file includes_file all_source_file
   local source_count skill_count pair_count catalog_count duplicate_count include_error_count all_source_count
-  local file profile record_type record_value source skills_part skill
+  local file scenario record_type record_value source skills_part skill
 
   pairs_file="$(mktemp)"
   catalog_file="$(mktemp)"
@@ -205,15 +213,15 @@ coverage() {
   includes_file="$(mktemp)"
   all_source_file="$(mktemp)"
 
-  for file in "${PROFILE_DIR}"/*.yaml; do
+  for file in "${SCENARIO_DIR}"/*.yaml; do
     [ -e "$file" ] || continue
-    profile="$(basename "$file" .yaml)"
+    scenario="$(basename "$file" .yaml)"
 
     while IFS=$'\t' read -r record_type record_value skills_part || [ -n "$record_type" ]; do
       case "$record_type" in
         I)
-          if ! require_profile "$record_value" >/dev/null; then
-            printf '%s includes missing profile: %s\n' "$profile" "$record_value" >> "$includes_file"
+          if ! require_scenario "$record_value" >/dev/null; then
+            printf '%s includes missing scenario: %s\n' "$scenario" "$record_value" >> "$includes_file"
           fi
           ;;
         S)
@@ -229,10 +237,10 @@ coverage() {
           done
           ;;
         E)
-          die "invalid profile YAML in ${file}: ${record_value}"
+          die "invalid scenario YAML in ${file}: ${record_value}"
           ;;
       esac
-    done < <(parse_profile_yaml "$file")
+    done < <(parse_scenario_yaml "$file")
   done
 
   awk -F '\t' '$1 ~ /^!/ { print $1 " | " $2 }' "$pairs_file" | sort -u > "$catalog_file"
@@ -261,12 +269,12 @@ coverage() {
   all_source_count="$(wc -l < "$all_source_file" | tr -d ' ')"
 
   echo "installable sources: ${source_count}"
-  echo "profile skills: ${skill_count}"
+  echo "scenario skills: ${skill_count}"
   echo "source/skill pairs: ${pair_count}"
   echo "catalog-only pairs: ${catalog_count}"
   echo "all-source entries: ${all_source_count}"
-  echo "overlap profile skills: ${duplicate_count}"
-  echo "missing profile includes: ${include_error_count}"
+  echo "overlap scenario skills: ${duplicate_count}"
+  echo "missing scenario includes: ${include_error_count}"
 
   if [ "$catalog_count" -gt 0 ]; then
     echo
@@ -276,13 +284,13 @@ coverage() {
 
   if [ "$duplicate_count" -gt 0 ]; then
     echo
-    echo "Overlap profile skills:"
+    echo "Overlap scenario skills:"
     cat "$duplicate_file"
   fi
 
   if [ "$include_error_count" -gt 0 ]; then
     echo
-    echo "Missing profile includes:"
+    echo "Missing scenario includes:"
     cat "$includes_file"
   fi
 
@@ -291,23 +299,23 @@ coverage() {
   [ "$catalog_count" -eq 0 ] && [ "$duplicate_count" -eq 0 ] && [ "$include_error_count" -eq 0 ]
 }
 
-expand_profile() {
-  local profile="$1"
+expand_scenario() {
+  local scenario="$1"
   local stack="${2:-}"
   local path record_type record_value skills_part source
 
   case ":${stack}:" in
-    *":${profile}:"*) die "profile include cycle: ${stack}:${profile}" ;;
+    *":${scenario}:"*) die "scenario include cycle: ${stack}:${scenario}" ;;
   esac
 
-  if ! path="$(require_profile "$profile")"; then
+  if ! path="$(require_scenario "$scenario")"; then
     return 1
   fi
 
   while IFS=$'\t' read -r record_type record_value skills_part || [ -n "$record_type" ]; do
     case "$record_type" in
       I)
-        if ! expand_profile "$record_value" "${stack}:${profile}"; then
+        if ! expand_scenario "$record_value" "${stack}:${scenario}"; then
           return 1
         fi
         ;;
@@ -318,10 +326,10 @@ expand_profile() {
         printf '%s | %s\n' "$source" "$skills_part"
         ;;
       E)
-        die "invalid profile YAML in ${path}: ${record_value}"
+        die "invalid scenario YAML in ${path}: ${record_value}"
         ;;
     esac
-  done < <(parse_profile_yaml "$path")
+  done < <(parse_scenario_yaml "$path")
 }
 
 TARGETS=""
@@ -330,26 +338,41 @@ PROJECT_DIR=""
 ALLOW_SELF_INSTALL=0
 SNAPSHOT_PATH=""
 DRY_RUN=0
+REMOVE_SKILLS=()
 
 target_required_message() {
-  printf '%s\n' "target is required. Use --target codex,cursor,claude or --target all."
+  printf '%s\n' "target is required. Use --target codex,cursor,claude-code,gemini-cli or --target all."
 }
 
 target_to_agent() {
   case "$1" in
     codex) printf '%s\n' "codex" ;;
-    claude) printf '%s\n' "claude-code" ;;
+    claude|claude-code) printf '%s\n' "claude-code" ;;
     cursor) printf '%s\n' "cursor" ;;
-    *) die "unknown target: $1" ;;
+    gemini|gemini-cli) printf '%s\n' "gemini-cli" ;;
+    openclaw) printf '%s\n' "openclaw" ;;
+    antigravity) printf '%s\n' "antigravity" ;;
+    all) printf '%s\n' "*" ;;
+    *) printf '%s\n' "$1" ;;
   esac
 }
 
 target_skill_dir() {
   case "$1" in
-    codex) printf '%s\n' ".agents/skills" ;;
-    claude) printf '%s\n' ".claude/skills" ;;
+    codex|all) printf '%s\n' ".agents/skills" ;;
+    claude|claude-code) printf '%s\n' ".claude/skills" ;;
     cursor) printf '%s\n' ".cursor/skills" ;;
-    *) die "unknown target: $1" ;;
+    *) return 1 ;;
+  esac
+}
+
+canonical_target() {
+  local target="$1"
+  target="$(printf '%s' "$target" | tr '[:upper:]' '[:lower:]')"
+
+  case "$target" in
+    gemini) printf '%s\n' "gemini-cli" ;;
+    *) printf '%s\n' "$target" ;;
   esac
 }
 
@@ -358,16 +381,19 @@ append_single_target() {
 
   target="$(trim "$target")"
   [ -n "$target" ] || die "--target contains an empty value"
+  target="$(canonical_target "$target")"
 
   case "$target" in
-    codex|claude|cursor) ;;
+    codex|claude|claude-code|cursor|gemini-cli|openclaw|antigravity) ;;
     all)
       [ -z "$TARGETS" ] || die "--target all cannot be combined with other targets"
-      TARGETS="codex claude cursor"
+      TARGETS="all"
       TARGETS_FROM_ALL=1
       return
       ;;
-    *) die "unknown target: $target" ;;
+    *)
+      echo "warn: target '${target}' is not a built-in alias; passing through to npx skills --agent" >&2
+      ;;
   esac
 
   [ "$TARGETS_FROM_ALL" -eq 0 ] || die "--target all cannot be combined with other targets"
@@ -443,6 +469,50 @@ parse_target_args() {
   if [ -z "$TARGETS" ] && [ "$required" = "required" ]; then
     die "$(target_required_message)"
   fi
+
+  resolve_project_dir
+}
+
+parse_remove_args() {
+  TARGETS=""
+  TARGETS_FROM_ALL=0
+  PROJECT_DIR=""
+  ALLOW_SELF_INSTALL=0
+  REMOVE_SKILLS=()
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --target)
+        shift
+        [ "$#" -gt 0 ] || die "--target requires a value"
+        append_target_value "$1"
+        ;;
+      --target=*)
+        append_target_value "${1#--target=}"
+        ;;
+      --project)
+        shift
+        [ "$#" -gt 0 ] || die "--project requires a value"
+        PROJECT_DIR="$1"
+        ;;
+      --project=*)
+        PROJECT_DIR="${1#--project=}"
+        ;;
+      --allow-self-install)
+        ALLOW_SELF_INSTALL=1
+        ;;
+      --*)
+        die "unknown argument: $1"
+        ;;
+      *)
+        REMOVE_SKILLS+=("$1")
+        ;;
+    esac
+    shift
+  done
+
+  [ "${#REMOVE_SKILLS[@]}" -gt 0 ] || die "remove requires at least one skill name"
+  [ -n "$TARGETS" ] || die "$(target_required_message)"
 
   resolve_project_dir
 }
@@ -569,21 +639,83 @@ resolve_snapshot_path() {
 
 ensure_not_self_install() {
   if [ "$ALLOW_SELF_INSTALL" -eq 0 ] && [ "$PROJECT_DIR" = "$ROOT_DIR" ]; then
-    die "refusing to install project skills into skillsman itself: ${PROJECT_DIR}. Pass --allow-self-install if this is intentional."
+    die "refusing to modify project skills inside skillsman itself: ${PROJECT_DIR}. Pass --allow-self-install if this is intentional."
   fi
 }
 
-install_profile() {
-  local profile="$1"
+target_label() {
+  local target="$1"
+  local agent skill_dir
+
+  agent="$(target_to_agent "$target")"
+  if skill_dir="$(target_skill_dir "$target")"; then
+    printf '%s (%s) -> %s\n' "$target" "$agent" "${PROJECT_DIR}/${skill_dir}"
+  else
+    printf '%s (%s)\n' "$target" "$agent"
+  fi
+}
+
+skill_installed_for_target() {
+  local target="$1"
+  local skill="$2"
+  local agent skill_dir
+
+  if skill_dir="$(target_skill_dir "$target")" && [ -f "${PROJECT_DIR}/${skill_dir}/${skill}/SKILL.md" ]; then
+    return 0
+  fi
+
+  agent="$(target_to_agent "$target")"
+  { (cd "$PROJECT_DIR" && npx skills list --json --agent "$agent" 2>/dev/null) || printf '[]'; } | node -e '
+    const fs = require("fs");
+    const wanted = process.argv[1];
+    let data = "";
+    process.stdin.on("data", chunk => { data += chunk; });
+    process.stdin.on("end", () => {
+      try {
+        const skills = JSON.parse(data);
+        process.exit(skills.some(skill => skill && skill.name === wanted) ? 0 : 1);
+      } catch {
+        process.exit(1);
+      }
+    });
+  ' "$skill"
+}
+
+installed_skill_count_for_target() {
+  local target="$1"
+  local agent skill_dir
+
+  if skill_dir="$(target_skill_dir "$target")" && [ -d "${PROJECT_DIR}/${skill_dir}" ]; then
+    find "${PROJECT_DIR}/${skill_dir}" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' '
+    return
+  fi
+
+  agent="$(target_to_agent "$target")"
+  { (cd "$PROJECT_DIR" && npx skills list --json --agent "$agent" 2>/dev/null) || printf '[]'; } | node -e '
+    let data = "";
+    process.stdin.on("data", chunk => { data += chunk; });
+    process.stdin.on("end", () => {
+      try {
+        const skills = JSON.parse(data);
+        process.stdout.write(String(Array.isArray(skills) ? skills.length : 0));
+      } catch {
+        process.stdout.write("0");
+      }
+    });
+  '
+}
+
+install_scenario() {
+  local scenario="$1"
   local targets="$2"
   local expanded line source skills_part install_file grouped_file
-  local target agent skill_dir installed_count skipped_count newly_installed before_count after_count
+  local target agent skill_dir installed_count skipped_count newly_installed before_count after_count label
   local -a skills missing_skills still_missing_skills
 
-  if ! expanded="$(expand_profile "$profile")"; then
+  if ! expanded="$(expand_scenario "$scenario")"; then
     return 1
   fi
-  [ -n "$expanded" ] || die "profile has no install entries: ${profile}"
+  [ -n "$expanded" ] || die "scenario has no install entries: ${scenario}"
   ensure_not_self_install
 
   install_file="$(mktemp)"
@@ -594,7 +726,7 @@ install_profile() {
     skills_part="$(trim "${line#*|}")"
     read -r -a skills <<< "$skills_part"
 
-    [ "${#skills[@]}" -gt 0 ] || die "profile ${profile} has an empty skill list for ${source}"
+    [ "${#skills[@]}" -gt 0 ] || die "scenario ${scenario} has an empty skill list for ${source}"
     case "$source" in
       !*) continue ;;
     esac
@@ -627,29 +759,33 @@ install_profile() {
     source="$(trim "${line%%|*}")"
     skills_part="$(trim "${line#*|}")"
     read -r -a skills <<< "$skills_part"
-    [ "${#skills[@]}" -gt 0 ] || die "profile ${profile} has an empty skill list for ${source}"
+    [ "${#skills[@]}" -gt 0 ] || die "scenario ${scenario} has an empty skill list for ${source}"
   done < "$grouped_file"
 
-  [ -s "$grouped_file" ] || die "profile has no installable entries: ${profile}"
+  [ -s "$grouped_file" ] || die "scenario has no installable entries: ${scenario}"
 
   for target in $targets; do
     agent="$(target_to_agent "$target")"
-    skill_dir="${PROJECT_DIR}/$(target_skill_dir "$target")"
-    mkdir -p "$skill_dir"
+    skill_dir=""
+    if skill_dir="$(target_skill_dir "$target")"; then
+      skill_dir="${PROJECT_DIR}/${skill_dir}"
+      mkdir -p "$skill_dir"
+    fi
     installed_count=0
     skipped_count=0
+    label="$(target_label "$target")"
 
-    echo "Installing ${profile} into ${skill_dir}"
+    echo "Installing ${scenario} for ${label}"
 
     while IFS= read -r line || [ -n "$line" ]; do
       source="$(trim "${line%%|*}")"
       skills_part="$(trim "${line#*|}")"
       read -r -a skills <<< "$skills_part"
       if [ "$skills_part" = "*" ]; then
-        before_count="$(find "$skill_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
+        before_count="$(installed_skill_count_for_target "$target")"
         echo "add: ${source} (all skills)"
         (cd "$PROJECT_DIR" && npx skills add "$source" --agent "$agent" -y </dev/null)
-        after_count="$(find "$skill_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
+        after_count="$(installed_skill_count_for_target "$target")"
         if [ "$after_count" -gt "$before_count" ]; then
           installed_count=$((installed_count + after_count - before_count))
         fi
@@ -658,7 +794,7 @@ install_profile() {
       missing_skills=()
 
       for skill in "${skills[@]}"; do
-        if [ -f "${skill_dir}/${skill}/SKILL.md" ]; then
+        if skill_installed_for_target "$target" "$skill"; then
           skipped_count=$((skipped_count + 1))
         else
           missing_skills+=("$skill")
@@ -676,7 +812,7 @@ install_profile() {
       newly_installed=0
       still_missing_skills=()
       for skill in "${missing_skills[@]}"; do
-        if [ -f "${skill_dir}/${skill}/SKILL.md" ]; then
+        if skill_installed_for_target "$target" "$skill"; then
           newly_installed=$((newly_installed + 1))
         else
           still_missing_skills+=("$skill")
@@ -695,10 +831,44 @@ install_profile() {
   rm -f "$install_file" "$grouped_file"
 }
 
+remove_skills() {
+  local targets="$1"
+  local target labels label
+
+  ensure_not_self_install
+
+  echo "warn: consider running skillsman snapshot before removing project skills" >&2
+
+  labels=""
+  for target in $targets; do
+    label="$(target_label "$target")"
+    labels="${labels}${labels:+, }${label}"
+  done
+
+  echo "Removing ${REMOVE_SKILLS[*]} from project skills for target request: ${labels}"
+  (cd "$PROJECT_DIR" && npx skills remove "${REMOVE_SKILLS[@]}" -y </dev/null)
+}
+
+status_skills() {
+  local targets="${1:-}"
+  local target agent
+
+  if [ -z "$targets" ]; then
+    (cd "$PROJECT_DIR" && npx skills list)
+    return
+  fi
+
+  for target in $targets; do
+    agent="$(target_to_agent "$target")"
+    echo "Project skills for ${target} (${agent}):"
+    (cd "$PROJECT_DIR" && npx skills list --agent "$agent")
+  done
+}
+
 doctor() {
   local targets="${1:-}"
   local failed=0
-  local target skill_dir
+  local target agent skill_dir
 
   if command -v npx >/dev/null 2>&1; then
     echo "ok: npx found"
@@ -722,11 +892,21 @@ doctor() {
   fi
 
   for target in $targets; do
-    skill_dir="${PROJECT_DIR}/$(target_skill_dir "$target")"
-    if [ -d "$skill_dir" ]; then
-      echo "ok: ${skill_dir} exists"
+    agent="$(target_to_agent "$target")"
+    if (cd "$PROJECT_DIR" && npx skills list --json --agent "$agent" >/dev/null 2>&1); then
+      echo "ok: npx skills list works for target ${target} (${agent})"
     else
-      echo "warn: ${skill_dir} missing"
+      echo "warn: npx skills list failed for target ${target} (${agent})"
+    fi
+    if skill_dir="$(target_skill_dir "$target")"; then
+      skill_dir="${PROJECT_DIR}/${skill_dir}"
+      if [ -d "$skill_dir" ]; then
+        echo "ok: ${skill_dir} exists"
+      else
+        echo "warn: ${skill_dir} missing"
+      fi
+    else
+      echo "info: ${target} has no Skillsman-maintained local directory mapping"
     fi
   done
 
@@ -770,7 +950,11 @@ write_snapshot() {
     echo "targets:"
 
     for target in $targets; do
-      skill_dir="${PROJECT_DIR}/$(target_skill_dir "$target")"
+      if ! skill_dir="$(target_skill_dir "$target")"; then
+        rm -f "$missing_file" "$snapshot_tmp"
+        die "snapshot requires a target with a known project skill directory: ${target}"
+      fi
+      skill_dir="${PROJECT_DIR}/${skill_dir}"
       echo "  ${target}:"
       echo "    skills:"
 
@@ -897,7 +1081,11 @@ apply_snapshot() {
 
   for target in $targets; do
     agent="$(target_to_agent "$target")"
-    skill_dir="${PROJECT_DIR}/$(target_skill_dir "$target")"
+    if ! skill_dir="$(target_skill_dir "$target")"; then
+      rm -f "$record_file" "$install_file" "$grouped_file"
+      die "apply requires a target with a known project skill directory: ${target}"
+    fi
+    skill_dir="${PROJECT_DIR}/${skill_dir}"
     if [ "$DRY_RUN" -eq 0 ]; then
       mkdir -p "$skill_dir"
     fi
@@ -909,7 +1097,7 @@ apply_snapshot() {
     echo "Applying ${path} into ${skill_dir}"
 
     while IFS=$'\t' read -r _ _ skill source || [ -n "$skill" ]; do
-      if [ -f "${skill_dir}/${skill}/SKILL.md" ]; then
+      if skill_installed_for_target "$target" "$skill"; then
         skipped_count=$((skipped_count + 1))
       else
         printf '%s\t%s\n' "$source" "$skill" >> "$install_file"
@@ -945,7 +1133,7 @@ apply_snapshot() {
       newly_installed=0
       still_missing_skills=()
       for skill in "${skills[@]}"; do
-        if [ -f "${skill_dir}/${skill}/SKILL.md" ]; then
+        if skill_installed_for_target "$target" "$skill"; then
           newly_installed=$((newly_installed + 1))
         else
           still_missing_skills+=("$skill")
@@ -975,26 +1163,36 @@ apply_snapshot() {
 
 main() {
   local command="${1:-}"
-  local profile
+  local scenario
 
   case "$command" in
     list)
       shift
       [ "$#" -eq 0 ] || die "list does not accept arguments"
-      list_profiles
+      list_scenarios
       ;;
     show)
       shift
-      [ "$#" -eq 1 ] || die "show requires exactly one profile"
-      expand_profile "$1"
+      [ "$#" -eq 1 ] || die "show requires exactly one scenario"
+      expand_scenario "$1"
+      ;;
+    status)
+      shift
+      parse_target_args optional "$@"
+      status_skills "$TARGETS"
       ;;
     init|add)
       shift
-      [ "$#" -gt 0 ] || die "${command} requires a profile"
-      profile="$1"
+      [ "$#" -gt 0 ] || die "${command} requires a scenario"
+      scenario="$1"
       shift
       parse_target_args required "$@"
-      install_profile "$profile" "$TARGETS"
+      install_scenario "$scenario" "$TARGETS"
+      ;;
+    remove)
+      shift
+      parse_remove_args "$@"
+      remove_skills "$TARGETS"
       ;;
     snapshot)
       shift
@@ -1009,12 +1207,14 @@ main() {
     update)
       shift
       parse_target_args optional "$@"
+      ensure_not_self_install
       (cd "$PROJECT_DIR" && npx skills update -p -y)
       ;;
     restore)
       shift
       parse_target_args optional "$@"
-      echo "warn: restore is legacy. Prefer rerunning skillsman init/add with the desired profiles."
+      ensure_not_self_install
+      echo "warn: restore is legacy. Prefer rerunning skillsman init/add with the desired scenarios."
       (cd "$PROJECT_DIR" && npx skills experimental_install)
       ;;
     doctor)
@@ -1033,19 +1233,19 @@ main() {
     *)
       case "$command" in
         --*)
-          profile="${command#--}"
+          scenario="${command#--}"
           ;;
         -*)
-          profile="${command#-}"
+          scenario="${command#-}"
           ;;
         *)
-          profile="$command"
+          scenario="$command"
           ;;
       esac
-      require_profile "$profile" >/dev/null
+      require_scenario "$scenario" >/dev/null
       shift
       parse_target_args required "$@"
-      install_profile "$profile" "$TARGETS"
+      install_scenario "$scenario" "$TARGETS"
       ;;
   esac
 }

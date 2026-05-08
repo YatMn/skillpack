@@ -1,6 +1,6 @@
 name: all
-title: All Profiles
-summary: Audit profile for every functional profile. Do not use for real projects.
+title: All Scenarios
+summary: Audit scenario for every functional scenario definition. Do not use for real projects.
 
 includes:
   - workflow

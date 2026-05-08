@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skillsman Manage"
+  short_description: "Manage project skills with Skillsman"
+  default_prompt: "Use $skillsman-manage to manage project skills for this repository with Skillsman."
