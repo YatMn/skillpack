@@ -26,7 +26,7 @@ to `npx skills`.
    - `init`: recommend scenarios for the project type and install after confirmation.
    - `add`: add a scenario or explicit skill set after confirmation.
    - `remove`: remove explicitly named skills only after snapshot guidance and confirmation.
-   - `update`: update project skills, then run diagnostics.
+   - `update`: update project skills after confirmation.
    - `snapshot`: save the installed project skill set.
    - `apply` or `migrate`: apply a snapshot to a target project or agent.
    - `doctor`: diagnose environment, target, source, and installed-skill state.
@@ -64,8 +64,9 @@ to `npx skills`.
    - `doctor`: `skillsman doctor --target <target> --project <project-path>`
 
 8. Verify:
-   - Run `skillsman doctor --target <target> --project <project-path>` after install, add, remove, update, or apply when a target is known.
-   - Report installed, skipped, removed, failed, and diagnostic items from command output.
+   - Use the Skillsman command output and targeted file/list checks to confirm the requested change.
+   - Run `skillsman doctor --target <target> --project <project-path>` only when the user asks for diagnostics or when troubleshooting a failed/unclear operation.
+   - Report installed, skipped, removed, failed, and any targeted verification items from command output.
 
 ## User-Facing Confirmation Format
 
@@ -82,7 +83,6 @@ Planned commands:
 - skillsman show web-app
 - skillsman init workflow --target codex,cursor --project /path/to/project
 - skillsman add web-app --target codex,cursor --project /path/to/project
-- skillsman doctor --target codex,cursor --project /path/to/project
 
 Confirm?
 ```
