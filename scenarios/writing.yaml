@@ -46,3 +46,8 @@ skills:
       - huashu-md-to-pdf
       - huashu-data-pro
       - huashu-slides
+
+  - source: https://github.com/softaworks/agent-toolkit
+    why: Detect and remove AI writing patterns while preserving the intended meaning and voice.
+    names:
+      - humanizer
