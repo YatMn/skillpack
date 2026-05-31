@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Personal agent skills manager for bundled skills and project scenarios.",
   "license": "MIT",
+  "scripts": {
+    "test": "bash test/skillsman-cli.test.sh"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -13,6 +16,7 @@
     "bin/",
     "scenarios/",
     "skills/",
+    "test/",
     "README.md",
     "README.zh-CN.md",
     "LICENSE"
