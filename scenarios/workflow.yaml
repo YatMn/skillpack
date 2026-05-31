@@ -9,9 +9,10 @@ skills:
     why: Planning, TDD, debugging, review, verification, and branch workflow.
 
   - source: YatMn/skillsman
-    why: Personal repo guidance, branch workflow, next prompt, and README helpers.
+    why: Personal repo guidance, branch workflow, OpenSpec, next prompt, and README helpers.
     names:
       - skillsman-agents-md
       - skillsman-branch
       - skillsman-next-prompt
+      - skillsman-openspec
       - skillsman-readme

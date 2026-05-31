@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skillsman OpenSpec"
+  short_description: "Use OpenSpec spec-driven workflows"
+  default_prompt: "Use $skillsman-openspec to install, initialize, update, or operate OpenSpec for this repository."

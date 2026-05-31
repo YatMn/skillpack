@@ -89,6 +89,7 @@ install plan, and wait for confirmation before installing.
 | `skillsman-branch` | 按 main/develop/release 模型创建、检查、同步和治理 Git/GitHub branches。 |
 | `skillsman-manage` | 管理项目 skills：inspect、initialize、add、remove、update、snapshot、apply 和 diagnose。 |
 | `skillsman-next-prompt` | 为 Codex 创建简洁的 continuation、handoff 或 fresh-session prompt。 |
+| `skillsman-openspec` | 安装、初始化、更新和使用 OpenSpec spec-driven workflows。 |
 | `skillsman-readme` | 创建或更新实用的软件仓库 README 文档。 |
 
 每个内置 skill 位于 `skills/<skill-name>/`。目录名、`SKILL.md` frontmatter
@@ -98,7 +99,7 @@ install plan, and wait for confirmation before installing.
 
 | Scenario | 使用场景 |
 | --- | --- |
-| `workflow` | Planning、branching、review、publish、README 和 repository workflow skills。 |
+| `workflow` | Planning、branching、review、publish、OpenSpec、README 和 repository workflow skills。 |
 | `web-app` | Frontend、React、Next.js、UI 和 browser app testing。 |
 | `deployment` | Hosted web app deployment、env vars、functions、runtime 和 verification。 |
 | `database` | Supabase、Postgres 和 storage。 |
@@ -119,9 +120,10 @@ Scenario 文件是简单 YAML：
 ```yaml
 skills:
   - source: YatMn/skillsman
-    why: Repository guidance, branch workflow, next prompt, and README helpers.
+    why: Repository guidance, branch workflow, OpenSpec, next prompt, and README helpers.
     names:
       - skillsman-branch
+      - skillsman-openspec
       - skillsman-readme
 ```
 

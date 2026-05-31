@@ -96,6 +96,7 @@ shows the plan, asks for confirmation, and then runs `skillsman init`,
 | `skillsman-branch` | Create, inspect, sync, and govern Git/GitHub branches using a main/develop/release model. |
 | `skillsman-manage` | Manage project skills: inspect, initialize, add, remove, update, snapshot, apply, and diagnose. |
 | `skillsman-next-prompt` | Create concise continuation, handoff, or fresh-session prompts for Codex. |
+| `skillsman-openspec` | Install, initialize, update, and operate OpenSpec spec-driven workflows. |
 | `skillsman-readme` | Create or update practical software-repository README documentation. |
 
 Each bundled skill lives under `skills/<skill-name>/`. The directory name,
@@ -106,7 +107,7 @@ sync.
 
 | Scenario | Use case |
 | --- | --- |
-| `workflow` | Planning, branching, review, publish, README, and repository workflow skills. |
+| `workflow` | Planning, branching, review, publish, OpenSpec, README, and repository workflow skills. |
 | `web-app` | Frontend, React, Next.js, UI, and browser app testing. |
 | `deployment` | Hosted web app deployment, env vars, functions, runtime, and verification. |
 | `database` | Supabase, Postgres, and storage. |
@@ -127,9 +128,10 @@ Scenario files are simple YAML:
 ```yaml
 skills:
   - source: YatMn/skillsman
-    why: Repository guidance, branch workflow, next prompt, and README helpers.
+    why: Repository guidance, branch workflow, OpenSpec, next prompt, and README helpers.
     names:
       - skillsman-branch
+      - skillsman-openspec
       - skillsman-readme
 ```
 

@@ -359,7 +359,7 @@ target_to_agent() {
 
 target_skill_dir() {
   case "$1" in
-    codex|all) printf '%s\n' ".agents/skills" ;;
+    codex) printf '%s\n' ".agents/skills" ;;
     claude|claude-code) printf '%s\n' ".claude/skills" ;;
     cursor) printf '%s\n' ".cursor/skills" ;;
     *) return 1 ;;
@@ -371,6 +371,7 @@ canonical_target() {
   target="$(printf '%s' "$target" | tr '[:upper:]' '[:lower:]')"
 
   case "$target" in
+    claude) printf '%s\n' "claude-code" ;;
     gemini) printf '%s\n' "gemini-cli" ;;
     *) printf '%s\n' "$target" ;;
   esac
@@ -833,7 +834,7 @@ install_scenario() {
 
 remove_skills() {
   local targets="$1"
-  local target labels label
+  local target agent labels label
 
   ensure_not_self_install
 
@@ -846,7 +847,11 @@ remove_skills() {
   done
 
   echo "Removing ${REMOVE_SKILLS[*]} from project skills for target request: ${labels}"
-  (cd "$PROJECT_DIR" && npx skills remove "${REMOVE_SKILLS[@]}" -y </dev/null)
+  for target in $targets; do
+    agent="$(target_to_agent "$target")"
+    echo "remove: ${REMOVE_SKILLS[*]} from ${target} (${agent})"
+    (cd "$PROJECT_DIR" && npx skills remove "${REMOVE_SKILLS[@]}" --agent "$agent" -y </dev/null)
+  done
 }
 
 status_skills() {
@@ -910,7 +915,7 @@ doctor() {
     fi
   done
 
-  echo "info: skills-lock.json is ignored by skillsman and is not required"
+  echo "info: skills-lock.json is used by snapshot source resolution; install, update, and doctor do not require it"
 
   return "$failed"
 }
